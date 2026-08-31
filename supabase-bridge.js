@@ -110,16 +110,19 @@
 
   window.google = window.google || {};
   window.google.script = window.google.script || {};
-  window.google.script.run = {
-    withSuccessHandler(fn) { this._success = fn; return this; },
-    withFailureHandler(fn) { this._failure = fn; return this; }
+  const bridgeRun = {
+    _success: null,
+    _failure: null,
+    withSuccessHandler(fn) { this._success = fn; return bridgeProxy; },
+    withFailureHandler(fn) { this._failure = fn; return bridgeProxy; }
   };
-  window.google.script.run = new Proxy(window.google.script.run, {
+  const bridgeProxy = new Proxy(bridgeRun, {
     get(target, name) {
-      if (name in target) return target[name].bind(target);
+      if (name in target) return typeof target[name] === 'function' ? target[name].bind(target) : target[name];
       return (...args) => runner(target._success, target._failure)[name](...args);
     }
   });
+  window.google.script.run = bridgeProxy;
 
   async function addLogin() {
     const { data: { session } } = await client.auth.getSession();
