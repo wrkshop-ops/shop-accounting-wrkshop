@@ -1,0 +1,4952 @@
+<!DOCTYPE html>
+
+<html lang="th">
+
+<head>
+
+    <base target="_top">
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>ระบบบัญชีร้านค้าสวัสดิการ</title>
+
+    
+
+    <!-- Frameworks and Libraries -->
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-bridge.js"></script>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    
+
+    <!-- Google Fonts: Sarabun -->
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    
+
+    <style>
+
+        /* Base Styles */
+
+        html, body {
+
+            font-family: 'Sarabun', sans-serif !important;
+
+            background-color: #f8fafc; /* Lighter slate color */
+
+            scroll-behavior: smooth;
+
+        }
+
+        .card {
+
+            background-color: white;
+
+            border-radius: 16px;
+
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+
+            padding: 24px;
+
+            border: 1px solid #e2e8f0;
+
+            transition: all 0.3s ease;
+
+        }
+
+        .btn {
+
+            display: inline-flex; align-items: center; justify-content: center; gap: 0.75rem;
+
+            padding: 0.75rem 1.5rem; border-radius: 12px; font-weight: 600;
+
+            transition: all 0.25s ease-in-out; cursor: pointer;
+
+            border: none;
+
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+
+        }
+
+        .btn:hover {
+
+            transform: translateY(-2px);
+
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+
+        }
+
+        .btn-primary { background: #3b82f6; color: white; }
+
+        .btn-primary:hover { background: #2563eb; }
+
+        .btn-secondary { background: #94a3b8; color: white; }
+
+        .btn-secondary:hover { background: #64748b; }
+
+        .btn-accent { background: #f97316; color: white; } /* Brighter Orange */
+
+        .btn-accent:hover { background: #ea580c; }
+
+        .btn-danger { background: #ef4444; color: white; }
+
+        .btn-danger:hover { background: #dc2626; }
+
+        .btn:disabled { background-color: #9ca3af; cursor: not-allowed; transform: none; box-shadow: none; }
+
+
+
+        /* Custom Components */
+
+        .loader-overlay {
+
+            transition: opacity 0.3s ease;
+
+            background-color: rgba(248, 250, 252, 0.8);
+
+            backdrop-filter: blur(4px);
+
+        }
+
+        .loader {
+
+            border: 5px solid #bfdbfe; border-top: 5px solid #3b82f6;
+
+            border-radius: 50%; width: 60px; height: 60px;
+
+            animation: spin 1s linear infinite;
+
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+
+
+        /* In-button loader animation */
+
+        .in-button-loader {
+
+            animation: spin 1s linear infinite;
+
+        }
+
+
+
+        .form-input {
+
+            background-color: #f8fafc;
+
+            border-radius: 12px; border: 1px solid #e2e8f0;
+
+            padding: 0.6rem 1rem; transition: all 0.2s ease;
+
+        }
+
+        .form-input:focus {
+
+            outline: none; border-color: #3b82f6;
+
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+
+            background-color: white;
+
+        }
+
+        .tab-btn.active {
+
+            background-color: #3b82f6;
+
+            color: white;
+
+            box-shadow: 0 2px 5px rgba(59, 130, 246, 0.3);
+
+        }
+
+
+
+        /* Modal Styles */
+
+        .modal-backdrop {
+
+            transition: opacity 0.3s ease;
+
+            background-color: rgba(0, 0, 0, 0.6);
+
+            backdrop-filter: blur(5px);
+
+        }
+
+        .modal-content {
+
+            transition: transform 0.3s ease, opacity 0.3s ease;
+
+        }
+
+
+
+        /* Sticky header fix */
+
+        .table-container {
+
+            max-height: calc(100vh - 260px);
+
+            overflow-y: auto;
+
+        }
+
+        
+
+        /* View transition */
+
+        .view-panel {
+
+            transition: opacity 0.3s ease-in-out;
+
+        }
+
+        
+
+        /* New Toast Notification Styles */
+
+        .toast-item {
+
+            display: flex;
+
+            align-items: flex-start;
+
+            padding: 1rem;
+
+            border-radius: 12px;
+
+            background-color: white;
+
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+            border-left-width: 4px;
+
+            transition: all 0.4s ease-in-out;
+
+            opacity: 0;
+
+            transform: translateX(100%);
+
+        }
+
+        .toast-item.show {
+
+            opacity: 1;
+
+            transform: translateX(0);
+
+        }
+
+        .toast-item.hide {
+
+            opacity: 0;
+
+            transform: translateY(-20px);
+
+        }
+
+        .toast-icon {
+
+            flex-shrink: 0;
+
+            width: 1.5rem; /* w-6 */
+
+            height: 1.5rem; /* h-6 */
+
+            font-size: 1.25rem; /* text-xl */
+
+            margin-right: 0.75rem; /* mr-3 */
+
+        }
+
+        .toast-content {
+
+            flex-grow: 1;
+
+        }
+
+        .toast-title {
+
+            font-weight: 700; /* font-bold */
+
+            color: #1f2937; /* text-gray-800 */
+
+        }
+
+        .toast-message {
+
+            font-size: 0.875rem; /* text-sm */
+
+            color: #4b5563; /* text-gray-600 */
+
+            margin-top: 0.25rem; /* mt-1 */
+
+        }
+
+        /* Toast Types */
+
+        .toast-success { border-color: #22c55e; /* green-500 */ }
+
+        .toast-success .toast-icon { color: #22c55e; }
+
+        .toast-error { border-color: #ef4444; /* red-500 */ }
+
+        .toast-error .toast-icon { color: #ef4444; }
+
+        .toast-info { border-color: #3b82f6; /* blue-500 */ }
+
+        .toast-info .toast-icon { color: #3b82f6; }
+
+
+
+
+
+        /* Print Styles */
+
+        @media print {
+
+            body {
+
+                background-color: white !important;
+
+                -webkit-print-color-adjust: exact;
+
+                print-color-adjust: exact;
+
+            }
+
+            /* Hide elements not meant for printing */
+
+            .no-print { display: none !important; }
+
+            /* Show elements meant only for printing */
+
+            .print-only { display: block !important; }
+
+            
+
+            /* Ensure modals are completely hidden during print */
+
+            .modal-backdrop, .modal-content {
+
+                display: none !important;
+
+            }
+
+
+
+            .receipt-page {
+
+                width: 210mm;
+
+                min-height: 297mm;
+
+                page-break-after: always; /* Each receipt will start on a new page */
+
+                box-sizing: border-box;
+
+                padding: 1.5cm;
+
+                font-size: 11pt;
+
+                line-height: 1.6;
+
+            }
+
+            .receipt-page:last-child {
+
+                page-break-after: auto;
+
+            }
+
+            .receipt-page table {
+
+                border-collapse: collapse;
+
+            }
+
+            .receipt-page th, .receipt-page td {
+
+                vertical-align: top;
+
+            }
+
+
+
+            /* Styles for Summary Report */
+
+            .summary-report-page {
+
+                width: 297mm; /* A4 Landscape width */
+
+                min-height: 210mm; /* A4 Landscape height */
+
+                page-break-after: auto; /* Allow content to flow across pages */
+
+                box-sizing: border-box;
+
+                padding: 1.5cm;
+
+                font-size: 11pt;
+
+                line-height: 1.6;
+
+                color: #000;
+
+                font-family: 'Sarabun', sans-serif;
+
+            }
+
+            .summary-report-page table {
+
+                border-collapse: collapse;
+
+                width: 100%;
+
+                margin-top: 10px;
+
+            }
+
+            .summary-report-page th, .summary-report-page td {
+
+                border: 1px solid #ccc;
+
+                padding: 6px 8px;
+
+                text-align: left;
+
+            }
+
+            .summary-report-page thead th {
+
+                background-color: #f3f4f6;
+
+                font-weight: bold;
+
+            }
+
+            .summary-report-page .total-row {
+
+                font-weight: bold;
+
+                background-color: #f0f4f8;
+
+            }
+
+            /* Print-specific page size for landscape */
+
+            @page {
+
+                size: A4 landscape;
+
+            }
+
+
+
+            /* Styles for Receipt Print */
+
+            .receipt-print-page {
+
+                width: 297mm; /* A4 Landscape width */
+
+                min-height: 210mm; /* A4 Landscape height */
+
+                page-break-after: auto;
+
+                box-sizing: border-box;
+
+                padding: 1.5cm;
+
+                font-size: 10pt; /* Slightly smaller font for more content */
+
+                line-height: 1.5;
+
+                color: #000;
+
+                font-family: 'Sarabun', sans-serif;
+
+            }
+
+            .receipt-print-page table {
+
+                border-collapse: collapse;
+
+                width: 100%;
+
+                margin-top: 10px;
+
+            }
+
+            .receipt-print-page th, .receipt-print-page td {
+
+                border: 1px solid #ccc;
+
+                padding: 6px 8px;
+
+                text-align: left;
+
+            }
+
+            .receipt-print-page thead th {
+
+                background-color: #f3f4f6;
+
+                font-weight: bold;
+
+            }
+
+            .receipt-print-page .total-row {
+
+                font-weight: bold;
+
+                background-color: #f0f4f8;
+
+            }
+
+        }
+
+        /* Ensure print-container is hidden by default */
+
+        #print-container {
+
+            display: none;
+
+        }
+
+
+
+        /* --- เพิ่ม CSS ใหม่สำหรับ Badge และ Status --- */
+
+        .badge {
+
+            padding: 0.25rem 0.75rem;
+
+            border-radius: 9999px;
+
+            font-size: 0.75rem;
+
+            font-weight: 600;
+
+            display: inline-block;
+
+            white-space: nowrap;
+
+        }
+
+        /* สีสถานะ */
+
+        .status-paid { background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; } /* จ่ายแล้ว - เขียว */
+
+        .status-pending { background-color: #fef9c3; color: #854d0e; border: 1px solid #fde047; } /* รอจ่าย - เหลือง */
+
+        .status-unpaid { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; } /* ยังไม่จ่าย - แดง */
+
+        .status-other { background-color: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; } /* อื่นๆ - เทา */
+
+        
+
+        /* สีประเภท */
+
+        .type-income { background-color: #d1fae5; color: #065f46; } /* รายรับ - เขียวเข้ม */
+
+        .type-expense { background-color: #ffe4e6; color: #be123c; } /* รายจ่าย - แดงชมพู */
+
+
+
+        /* Real-time Select Styling */
+
+        .status-select {
+
+            appearance: none;
+
+            border: 1px solid transparent;
+
+            padding: 4px 24px 4px 12px;
+
+            border-radius: 20px;
+
+            font-size: 0.8rem;
+
+            font-weight: 600;
+
+            cursor: pointer;
+
+            transition: all 0.2s;
+
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+
+            background-position: right 0.1rem center;
+
+            background-repeat: no-repeat;
+
+            background-size: 1.25em 1.25em;
+
+        }
+
+        .status-select:hover { border-color: #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+
+        .status-select:focus { outline: none; ring: 2px solid #3b82f6; }
+
+        
+
+        /* Summary Card Styling */
+
+        .summary-card-header {
+
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+
+            border: 1px solid #e2e8f0;
+
+            border-radius: 16px;
+
+            padding: 1.25rem;
+
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+
+        }
+
+
+
+    </style>
+
+</head>
+
+<body class="text-slate-700">
+
+
+
+    <!-- Loader Overlay (for initial page load) -->
+
+    <div id="loader-overlay" class="fixed inset-0 flex-col items-center justify-center z-[100] flex">
+
+        <div class="loader"></div>
+
+        <p id="loader-text" class="mt-4 text-slate-600 font-semibold text-lg">กำลังโหลดข้อมูล...</p>
+
+    </div>
+
+    
+
+    <!-- New Toast Container -->
+
+    <div id="toast-container" class="fixed top-5 right-5 z-[150] w-full max-w-xs space-y-3">
+
+        <!-- Toasts will be dynamically inserted here -->
+
+    </div>
+
+
+
+    <!-- Main App Container -->
+
+    <div id="app" class="opacity-0 transition-opacity duration-500">
+
+        <!-- Header -->
+
+        <header class="bg-white/80 backdrop-blur-lg shadow-md p-4 flex flex-col md:flex-row justify-between items-center sticky top-0 z-40 no-print border-b border-slate-200">
+
+            <div class="text-center md:text-left mb-4 md:mb-0">
+
+                <h1 class="text-2xl font-bold text-slate-800">ระบบบัญชีร้านค้าสวัสดิการ</h1>
+
+                <p class="text-sm text-slate-500 font-medium">โรงเรียนวัดไร่ขิงวิทยา</p>
+
+                <div class="text-xs text-slate-600 mt-2 space-y-1">
+
+                    <p>53 หมู่ 2 ต.ไร่ขิง อ.สามพราน จ.นครปฐม 73210</p>
+
+                    <p>โทรศัพท์ 0-3431-8086-7</p>
+
+                    <p>แฟ็กซ์ 0-3432-2755</p>
+
+                </div>
+
+            </div>
+
+            <!-- Navigation Tabs -->
+
+            <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-full shadow-inner">
+
+                <button id="transaction-entry-tab-btn" class="tab-btn btn btn-sm px-6 py-2 active" data-original-text="บันทึกรายรับ-รายจ่าย" data-original-icon="fa-solid fa-file-invoice-dollar">
+
+                    <i class="fa-solid fa-file-invoice-dollar"></i><span>บันทึกรายรับ-รายจ่าย</span>
+
+                </button>
+
+                <button id="summary-tab-btn" class="tab-btn btn btn-sm px-6 py-2" data-original-text="สรุปรายรับ-รายจ่าย" data-original-icon="fa-solid fa-chart-line">
+
+                    <i class="fa-solid fa-chart-line"></i><span>สรุปรายรับ-รายจ่าย</span>
+
+                </button>
+
+                <button id="suppliers-tab-btn" class="tab-btn btn btn-sm px-6 py-2" data-original-text="จัดการร้านค้า/ผู้ขาย" data-original-icon="fa-solid fa-truck-field">
+
+                    <i class="fa-solid fa-truck-field"></i><span>จัดการร้านค้า/ผู้ขาย</span>
+
+                </button>
+
+                <button id="products-tab-btn" class="tab-btn btn btn-sm px-6 py-2" data-original-text="จัดการสินค้า" data-original-icon="fa-solid fa-box-open">
+
+                    <i class="fa-solid fa-box-open"></i><span>จัดการสินค้า</span>
+
+                </button>
+
+            </div>
+
+        </header>
+
+
+
+        <!-- Main Content Area -->
+
+        <div id="main-content-area" class="container mx-auto p-4 md:p-6 no-print">
+
+            
+
+            <div id="global-dashboard" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 transition-all duration-300">
+
+                <div id="dash-card-1" class="summary-card-header border-l-4 border-l-green-500 bg-white shadow-sm">
+
+                    <div class="flex justify-between items-start">
+
+                        <div>
+
+                            <div id="dash-label-1" class="text-sm text-slate-500 font-medium">รายรับรวม (ทั้งหมด)</div>
+
+                            <div id="dash-value-1" class="text-2xl font-bold text-green-600 mt-1">0.00</div>
+
+                            <div id="dash-desc-1" class="text-xs text-slate-400 mt-1">รายได้สะสม</div>
+
+                        </div>
+
+                        <div id="dash-icon-bg-1" class="p-2 bg-green-50 rounded-lg text-green-600">
+
+                            <i id="dash-icon-1" class="fa-solid fa-arrow-trend-up"></i>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div id="dash-card-2" class="summary-card-header border-l-4 border-l-red-500 bg-white shadow-sm">
+
+                    <div class="flex justify-between items-start">
+
+                        <div>
+
+                            <div id="dash-label-2" class="text-sm text-slate-500 font-medium">รายจ่ายรวม (ทั้งหมด)</div>
+
+                            <div id="dash-value-2" class="text-2xl font-bold text-red-600 mt-1">0.00</div>
+
+                            <div id="dash-desc-2" class="text-xs text-slate-400 mt-1">ค่าใช้จ่ายสะสม</div>
+
+                        </div>
+
+                        <div id="dash-icon-bg-2" class="p-2 bg-red-50 rounded-lg text-red-600">
+
+                            <i id="dash-icon-2" class="fa-solid fa-arrow-trend-down"></i>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div id="dash-card-3" class="summary-card-header border-l-4 border-l-blue-500 bg-white shadow-sm">
+
+                    <div class="flex justify-between items-start">
+
+                        <div>
+
+                            <div id="dash-label-3" class="text-sm text-slate-500 font-medium">คงเหลือสุทธิ</div>
+
+                            <div id="dash-value-3" class="text-2xl font-bold text-blue-600 mt-1">0.00</div>
+
+                            <div id="dash-desc-3" class="text-xs text-slate-400 mt-1">ยอดคงคลังปัจจุบัน</div>
+
+                        </div>
+
+                        <div id="dash-icon-bg-3" class="p-2 bg-blue-50 rounded-lg text-blue-600">
+
+                            <i id="dash-icon-3" class="fa-solid fa-wallet"></i>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div id="transaction-entry-view" class="view-panel">
+
+                <div class="card flex flex-col">
+
+                    <div class="p-6 border-b border-slate-200 flex flex-col md:flex-row gap-4 justify-between items-center">
+
+                        <h2 class="text-xl font-bold text-slate-800">รายการรายรับ-รายจ่าย</h2>
+
+                        <button id="openTransactionModalBtn" class="btn btn-primary" data-original-text="เพิ่มรายการใหม่" data-original-icon="fa-solid fa-plus"><i class="fa-solid fa-plus"></i><span>เพิ่มรายการใหม่</span></button>
+
+                    </div>
+
+                    <!-- New section for Print Receipt -->
+
+                    <div class="p-6 border-b border-slate-200 flex flex-col md:flex-row gap-4 justify-between items-center">
+
+                        <h3 class="text-lg font-bold text-slate-700">พิมพ์ใบเสร็จรายการจ่ายเงิน</h3>
+
+                        <div class="flex flex-col md:flex-row items-center gap-3">
+
+                            <label for="receiptPrintStartDate" class="text-sm font-medium text-slate-600">จากวันที่:</label>
+
+                            <input type="date" id="receiptPrintStartDate" class="form-input w-40">
+
+                            <label for="receiptPrintEndDate" class="text-sm font-medium text-slate-600">ถึงวันที่:</label>
+
+                            <input type="date" id="receiptPrintEndDate" class="form-input w-40">
+
+                            <button id="printReceiptBtn" class="btn btn-secondary" data-original-text="พิมพ์ใบเสร็จ" data-original-icon="fa-solid fa-print"><i class="fa-solid fa-print"></i><span>พิมพ์ใบเสร็จ</span></button>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- [NEW] Filter & Search Bar for Transaction Table -->
+
+                    <div class="px-6 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap gap-3 items-center">
+
+                        <div class="relative flex-grow max-w-md">
+
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+
+                            <input type="text" id="transSearchInput" class="form-input w-full pl-10" placeholder="ค้นหา: ชื่อร้าน, รายการ, หมายเหตุ...">
+
+                        </div>
+
+                        <select id="transFilterType" class="form-input w-32">
+
+                            <option value="all">ทุกประเภท</option>
+
+                            <option value="รายรับ">รายรับ</option>
+
+                            <option value="รายจ่าย">รายจ่าย</option>
+
+                        </select>
+
+                        <select id="transFilterStatus" class="form-input w-32">
+
+                            <option value="all">ทุกสถานะ</option>
+
+                            <option value="ยังไม่จ่าย">ยังไม่จ่าย</option>
+
+                            <option value="รอจ่าย">รอจ่าย</option>
+
+                            <option value="จ่ายแล้ว">จ่ายแล้ว</option>
+
+                            <option value="อื่นๆ">อื่นๆ</option>
+
+                        </select>
+
+                        <button id="transResetBtn" class="btn btn-sm btn-secondary text-xs"><i class="fa-solid fa-rotate-left"></i> รีเซ็ต</button>
+
+                    </div>
+
+
+
+                    <div class="flex-grow table-container">
+
+                        <table class="w-full text-sm">
+
+                            <thead class="bg-slate-100 text-slate-600 uppercase text-xs sticky top-0 z-10">
+
+                                <tr>
+
+                                    <th class="p-4 text-left rounded-l-lg whitespace-nowrap">ประเภท</th>
+
+                                    <th class="p-4 text-left whitespace-nowrap">วันที่</th>
+
+                                    <th class="p-4 text-left whitespace-nowrap">ชื่อร้าน</th>
+
+                                    <th class="p-4 text-left whitespace-nowrap">หมวดหมู่สินค้า</th>
+
+                                    <th class="p-4 text-left whitespace-nowrap">รายการ</th>
+
+                                    <th class="p-4 text-right whitespace-nowrap">จำนวนเงิน (บาท)</th>
+
+                                    <th class="p-4 text-left whitespace-nowrap">สถานะ</th>
+
+                                    <th class="p-4 text-left whitespace-nowrap" style="min-width: 170px;">วันที่จ่ายเงิน</th>
+
+                                    <th class="p-4 text-center rounded-r-lg whitespace-nowrap">จัดการ</th>
+
+                                </tr>
+
+                            </thead>
+
+                            <tbody id="transactionTableBody">
+
+                                <!-- Transaction data will be rendered here -->
+
+                            </tbody>
+
+                        </table>
+
+                        <div id="transactionTablePlaceholder" class="text-center p-16 text-slate-500 hidden">
+
+                            <i class="fa-solid fa-file-invoice fa-3x text-slate-300 mb-4"></i>
+
+                            <p>ยังไม่มีรายการรายรับ-รายจ่าย</p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            
+
+            <!-- View: Summary Data Table -->
+
+            <section id="summary-view" class="view-panel hidden opacity-0">
+
+                <div class="card">
+
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+
+                        <h2 class="text-2xl font-bold text-slate-800">สรุปรายรับ-รายจ่ายทั้งหมด</h2>
+
+                        <div class="flex items-center gap-3">
+
+                            <button id="print-summary-btn" class="btn btn-secondary" data-original-text="พิมพ์สรุป (ตามตัวกรอง)" data-original-icon="fa-solid fa-print"><i class="fa-solid fa-print"></i><span>พิมพ์สรุป (ตามตัวกรอง)</span></button>
+
+                            <button id="download-summary-btn" class="btn btn-accent" data-original-text="ดาวน์โหลด Excel (ตามตัวกรอง)" data-original-icon="fa-solid fa-file-excel"><i class="fa-solid fa-file-excel"></i><span>ดาวน์โหลด Excel (ตามตัวกรอง)</span></button>
+
+                        </div>
+
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-6 pb-6 border-b border-slate-200 z-20 relative">
+
+                        <label class="font-medium">ตัวกรอง:</label>
+
+                        <!-- เปลี่ยน Select ธรรมดาเป็น Container สำหรับ Multi-select -->
+
+                        <div id="filter-type-container" class="w-40 relative"></div>
+
+                        <div id="filter-shop-container" class="w-48 relative"></div>
+
+                        <div id="filter-category-container" class="w-48 relative"></div>
+
+                        <div id="filter-status-container" class="w-40 relative"></div>
+
+                    </div>
+
+                    <div id="summary-table-wrapper" class="overflow-x-auto">
+
+                        <table id="main-summary-table" class="w-full text-sm">
+
+                            <thead class="bg-slate-100 text-slate-600 uppercase text-xs sticky top-0 z-10">
+
+                                <tr>
+
+                                    <th class="p-4 text-left rounded-l-lg">ประเภท</th>
+
+                                    <th class="p-4 text-left">วันที่</th>
+
+                                    <th class="p-4 text-left">ชื่อร้าน</th>
+
+                                    <th class="p-4 text-left">หมวดหมู่สินค้า</th>
+
+                                    <th class="p-4 text-left">รายการ</th>
+
+                                    <th class="p-4 text-right">จำนวนเงิน (บาท)</th>
+
+                                    <th class="p-4 text-left">สถานะ</th>
+
+                                    <th class="p-4 text-left">วันที่จ่ายเงิน</th>
+
+                                    <th class="p-4 text-left rounded-r-lg">หมายเหตุ</th>
+
+                                </tr>
+
+                            </thead>
+
+                            <tbody id="summary-table-body"></tbody>
+
+                            <tfoot id="summary-table-foot" class="font-semibold text-slate-800 bg-slate-50"></tfoot>
+
+                        </table>
+
+                        <div id="summary-table-placeholder" class="text-center p-16 text-slate-500"><i class="fa-solid fa-box-open fa-3x text-slate-300 mb-4"></i><p>ยังไม่มีข้อมูลรายรับ-รายจ่าย</p></div>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+
+
+            <!-- View: Suppliers Management -->
+
+            <div id="suppliers-view" class="view-panel hidden opacity-0">
+
+                <div class="card">
+
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+
+                        <h2 class="text-2xl font-bold text-slate-800">จัดการร้านค้า/ผู้ขาย</h2>
+
+                        <button id="addSupplierBtn" class="btn btn-primary" data-original-text="เพิ่มผู้ขายใหม่" data-original-icon="fa-solid fa-plus"><i class="fa-solid fa-plus"></i><span>เพิ่มผู้ขายใหม่</span></button>
+
+                    </div>
+
+                    <div class="overflow-x-auto">
+
+                        <table class="w-full text-sm">
+
+                            <thead class="bg-slate-100 text-slate-600 uppercase text-xs"><tr>
+
+                                <th class="p-4 text-left rounded-l-lg">รหัสผู้ขาย</th>
+
+                                <th class="p-4 text-left">ชื่อร้าน/ผู้ขาย</th>
+
+                                <th class="p-4 text-center rounded-r-lg">จัดการ</th>
+
+                            </tr></thead>
+
+                            <tbody id="suppliers-table-body"></tbody>
+
+                        </table>
+
+                        <div id="suppliers-table-placeholder" class="text-center p-16 text-slate-500 hidden"><i class="fa-solid fa-store fa-3x text-slate-300 mb-4"></i><p>ยังไม่มีข้อมูลผู้ขาย</p></div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- View: Products Management -->
+
+            <div id="products-view" class="view-panel hidden opacity-0">
+
+                <div class="card">
+
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+
+                        <h2 class="text-2xl font-bold text-slate-800">จัดการสินค้า</h2>
+
+                        <button id="addProductBtn" class="btn btn-primary" data-original-text="เพิ่มสินค้าใหม่" data-original-icon="fa-solid fa-plus"><i class="fa-solid fa-plus"></i><span>เพิ่มสินค้าใหม่</span></button>
+
+                    </div>
+
+                    <div class="overflow-x-auto">
+
+                        <table class="w-full text-sm">
+
+                            <thead class="bg-slate-100 text-slate-600 uppercase text-xs"><tr>
+
+                                <th class="p-4 text-left rounded-l-lg">รหัสสินค้า</th>
+
+                                <th class="p-4 text-left">ชื่อสินค้า</th>
+
+                                <th class="p-4 text-left">หมวดหมู่</th>
+
+                                <th class="p-4 text-center rounded-r-lg">จัดการ</th>
+
+                            </tr></thead>
+
+                            <tbody id="products-table-body"></tbody>
+
+                        </table>
+
+                        <div id="products-table-placeholder" class="text-center p-16 text-slate-500 hidden"><i class="fa-solid fa-boxes-stacked fa-3x text-slate-300 mb-4"></i><p>ยังไม่มีข้อมูลสินค้า</p></div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <footer id="main-footer" class="text-center mt-8 p-4 text-slate-600 text-sm no-print">
+
+            <p>พัฒนาโดย: นายสุรเดช ธรรมประโชติ</p>
+
+            <p>ครูกลุ่มสาระสังคมศึกษา ศาสนาและวัฒนธรรม</p>
+
+            <p>โทรฯ 061-0123342</p>
+
+        </footer>
+
+    </div>
+
+
+
+    <!-- Confirmation Modal (Generic) -->
+
+    <div id="confirmModal" class="hidden fixed inset-0 flex items-center justify-center p-4 z-[70]">
+
+        <div class="fixed inset-0 bg-black/50 modal-backdrop"></div>
+
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-8 modal-content transform scale-95 text-center relative">
+
+            <i class="fa-solid fa-circle-question text-6xl text-blue-500 mb-4"></i>
+
+            <h2 id="confirmModalTitle" class="text-2xl font-bold text-gray-800 mb-2">ยืนยันการดำเนินการ</h2>
+
+            <p id="confirmModalMessage" class="text-gray-600 mt-2 mb-6 text-base"></p>
+
+            <div class="flex justify-center gap-4">
+
+                <button type="button" id="confirmCancelBtn" class="btn btn-secondary" data-original-text="ยกเลิก" data-original-icon="fa-solid fa-ban">
+
+                    <i class="fa-solid fa-ban"></i><span>ยกเลิก</span>
+
+                </button>
+
+                <button type="button" id="confirmConfirmBtn" class="btn btn-primary" data-original-text="ยืนยัน" data-original-icon="fa-solid fa-circle-check">
+
+                    <i class="fa-solid fa-circle-check"></i><span>ยืนยัน</span>
+
+                </button>
+
+            </div>
+
+            <button type="button" class="close-modal-btn absolute top-3 right-3 text-slate-400 hover:text-slate-600" data-modal-id="confirmModal">
+
+                <i class="fa-solid fa-xmark fa-lg"></i>
+
+            </button>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- Input Modal (Generic) -->
+
+    <div id="inputModal" class="hidden fixed inset-0 flex items-center justify-center p-4 z-[70]">
+
+        <div class="fixed inset-0 bg-black/50 modal-backdrop"></div>
+
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-8 modal-content transform scale-95 relative">
+
+            <h2 id="inputModalTitle" class="text-2xl font-bold text-gray-800 mb-4">กรุณาป้อนข้อมูล</h2>
+
+            <p id="inputModalMessage" class="text-gray-600 mb-4 text-base"></p>
+
+            <input type="password" id="inputModalField" class="form-input w-full mb-6" placeholder="ป้อนรหัสผ่าน...">
+
+            <div class="flex justify-center gap-4">
+
+                <button type="button" id="inputCancelBtn" class="btn btn-secondary" data-original-text="ยกเลิก" data-original-icon="fa-solid fa-ban">
+
+                    <i class="fa-solid fa-ban"></i><span>ยกเลิก</span>
+
+                </button>
+
+                <button type="button" id="inputConfirmBtn" class="btn btn-primary" data-original-text="ตกลง" data-original-icon="fa-solid fa-check">
+
+                    <i class="fa-solid fa-check"></i><span>ตกลง</span>
+
+                </button>
+
+            </div>
+
+            <button type="button" class="close-modal-btn absolute top-3 right-3 text-slate-400 hover:text-slate-600" data-modal-id="inputModal">
+
+                <i class="fa-solid fa-xmark fa-lg"></i>
+
+            </button>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- Transaction Entry Modal -->
+
+    <div id="transactionEntryModal" class="hidden fixed inset-0 flex items-center justify-center p-4 z-50">
+
+        <div class="fixed inset-0 bg-black/50 modal-backdrop"></div>
+
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6 modal-content transform scale-95 relative">
+
+            <div class="flex justify-between items-center border-b border-slate-200 pb-4 mb-4">
+
+                <h2 id="transactionModalTitle" class="text-xl font-bold text-slate-800">บันทึกรายการรายรับ-รายจ่าย</h2>
+
+                <button type="button" class="close-modal-btn text-slate-400 hover:text-slate-600" data-modal-id="transactionEntryModal">
+
+                    <i class="fa-solid fa-xmark fa-lg"></i>
+
+                </button>
+
+            </div>
+
+            
+
+            <form id="transactionForm" class="space-y-4">
+
+                <input type="hidden" id="originalTransactionData"> <!-- For editing existing records -->
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                    <div>
+
+                        <label for="transactionType" class="block text-sm font-medium text-slate-600">ประเภท</label>
+
+                        <select id="transactionType" class="form-input w-full mt-1" required>
+
+                            <!-- Options populated by JS -->
+
+                        </select>
+
+                    </div>
+
+                    <div>
+
+                        <label for="transactionDate" class="block text-sm font-medium text-slate-600">วันที่</label>
+
+                        <input type="date" id="transactionDate" class="form-input w-full mt-1" required>
+
+                    </div>
+
+                </div>
+
+                <div>
+
+                    <label for="shopName" class="block text-sm font-medium text-slate-600">ชื่อร้าน</label>
+
+                    <input type="text" id="shopName" class="form-input w-full mt-1" list="shopNamesDatalist" required>
+
+                    <datalist id="shopNamesDatalist"></datalist>
+
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                    <div>
+
+                        <label for="productCategory" class="block text-sm font-medium text-slate-600">หมวดหมู่สินค้า</label>
+
+                        <input type="text" id="productCategory" class="form-input w-full mt-1" list="categoriesDatalist" required>
+
+                        <datalist id="categoriesDatalist"></datalist>
+
+                    </div>
+
+                    <div>
+
+                        <label for="itemName" class="block text-sm font-medium text-slate-600">รายการ</label>
+
+                        <input type="text" id="itemName" class="form-input w-full mt-1" list="itemsDatalist" required>
+
+                        <datalist id="itemsDatalist"></datalist>
+
+                    </div>
+
+                </div>
+
+                <div>
+
+                    <label for="amount" class="block text-sm font-medium text-slate-600">จำนวนเงิน (บาท)</label>
+
+                    <input type="number" step="0.01" id="amount" class="form-input w-full mt-1 text-right" required>
+
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                    <div>
+
+                        <label for="transactionStatus" class="block text-sm font-medium text-slate-600">สถานะ</label>
+
+                        <select id="transactionStatus" class="form-input w-full mt-1" required>
+
+                            <!-- Options populated by JS -->
+
+                        </select>
+
+                    </div>
+
+                    <div>
+
+                        <label for="paymentDate" class="block text-sm font-medium text-slate-600">วันที่จ่ายเงิน (ถ้ามี)</label>
+
+                        <input type="date" id="paymentDate" class="form-input w-full mt-1">
+
+                    </div>
+
+                </div>
+
+                <div>
+
+                    <label for="notes" class="block text-sm font-medium text-slate-600">หมายเหตุ</label>
+
+                    <textarea id="notes" class="form-input w-full mt-1 h-20"></textarea>
+
+                </div>
+
+                
+
+                <div class="mt-6 flex justify-end gap-3">
+
+                    <button type="button" id="cancelTransactionBtn" class="btn btn-secondary" data-original-text="ยกเลิก" data-original-icon="fa-solid fa-ban">
+
+                        <i class="fa-solid fa-ban"></i><span>ยกเลิก</span>
+
+                    </button>
+
+                    <button type="submit" id="saveTransactionBtn" class="btn btn-primary" data-original-text="บันทึกรายการ" data-original-icon="fa-solid fa-save">
+
+                        <i class="fa-solid fa-save"></i><span>บันทึกรายการ</span>
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- Supplier Form Modal -->
+
+    <div id="supplierFormModal" class="hidden fixed inset-0 flex items-center justify-center p-4 z-50">
+
+        <div class="fixed inset-0 bg-black/50 modal-backdrop"></div>
+
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 modal-content transform scale-95 relative">
+
+            <div class="flex justify-between items-center border-b border-slate-200 pb-4 mb-4">
+
+                <h2 id="supplierModalTitle" class="text-xl font-bold text-slate-800">เพิ่มผู้ขายใหม่</h2>
+
+                <button type="button" class="close-modal-btn text-slate-400 hover:text-slate-600" data-modal-id="supplierFormModal">
+
+                    <i class="fa-solid fa-xmark fa-lg"></i>
+
+                </button>
+
+            </div>
+
+            
+
+            <form id="supplierForm" class="space-y-4">
+
+                <input type="hidden" id="originalSupplierID">
+
+                <div>
+
+                    <label for="supplierID" class="block text-sm font-medium text-slate-600">รหัสผู้ขาย</label>
+
+                    <input type="text" id="supplierID" class="form-input w-full mt-1" required readonly>
+
+                    <p class="text-xs text-slate-500 mt-1">รหัสจะถูกสร้างอัตโนมัติ (เช่น S001, S002)</p>
+
+                </div>
+
+                <div>
+
+                    <label for="supplierName" class="block text-sm font-medium text-slate-600">ชื่อร้าน/ผู้ขาย</label>
+
+                    <input type="text" id="supplierName" class="form-input w-full mt-1" required>
+
+                </div>
+
+                
+
+                <div class="mt-6 flex justify-end gap-3">
+
+                    <button type="button" id="cancelSupplierBtn" class="btn btn-secondary" data-original-text="ยกเลิก" data-original-icon="fa-solid fa-ban">
+
+                        <i class="fa-solid fa-ban"></i><span>ยกเลิก</span>
+
+                    </button>
+
+                    <button type="submit" id="saveSupplierBtn" class="btn btn-primary" data-original-text="บันทึกผู้ขาย" data-original-icon="fa-solid fa-check-to-slot">
+
+                        <i class="fa-solid fa-check-to-slot"></i><span>บันทึกผู้ขาย</span>
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- Product Form Modal -->
+
+    <div id="productFormModal" class="hidden fixed inset-0 flex items-center justify-center p-4 z-50">
+
+        <div class="fixed inset-0 bg-black/50 modal-backdrop"></div>
+
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 modal-content transform scale-95 relative">
+
+            <div class="flex justify-between items-center border-b border-slate-200 pb-4 mb-4">
+
+                <h2 id="productModalTitle" class="text-xl font-bold text-slate-800">เพิ่มสินค้าใหม่</h2>
+
+                <button type="button" class="close-modal-btn text-slate-400 hover:text-slate-600" data-modal-id="productFormModal">
+
+                    <i class="fa-solid fa-xmark fa-lg"></i>
+
+                </button>
+
+            </div>
+
+            
+
+            <form id="productForm" class="space-y-4">
+
+                <input type="hidden" id="originalProductID">
+
+                <div>
+
+                    <label for="productCategorySelect" class="block text-sm font-medium text-slate-600">หมวดหมู่</label>
+
+                    <select id="productCategorySelect" class="form-input w-full mt-1" required>
+
+                        <option value="">-- เลือกหมวดหมู่ --</option>
+
+                        <option value="บริโภค">บริโภค</option>
+
+                        <option value="อุปโภค">อุปโภค</option>
+
+                        <option value="อื่นๆ">อื่นๆ</option>
+
+                    </select>
+
+                </div>
+
+                <div>
+
+                    <label for="productID" class="block text-sm font-medium text-slate-600">รหัสสินค้า</label>
+
+                    <input type="text" id="productID" class="form-input w-full mt-1" required readonly>
+
+                    <p id="productIDHelper" class="text-xs text-slate-500 mt-1">กรุณาเลือกหมวดหมู่เพื่อสร้างรหัสสินค้า</p>
+
+                </div>
+
+                <div>
+
+                    <label for="productName" class="block text-sm font-medium text-slate-600">ชื่อสินค้า</label>
+
+                    <input type="text" id="productName" class="form-input w-full mt-1" required>
+
+                </div>
+
+                
+
+                <div class="mt-6 flex justify-end gap-3">
+
+                    <button type="button" id="cancelProductBtn" class="btn btn-secondary" data-original-text="ยกเลิก" data-original-icon="fa-solid fa-ban">
+
+                        <i class="fa-solid fa-ban"></i><span>ยกเลิก</span>
+
+                    </button>
+
+                    <button type="submit" id="saveProductBtn" class="btn btn-primary" data-original-text="บันทึกสินค้า" data-original-icon="fa-solid fa-save">
+
+                        <i class="fa-solid fa-save"></i><span>บันทึกสินค้า</span>
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- Container for printing receipts -->
+
+    <div id="print-container" class="print-only hidden"></div>
+
+
+
+    <script>
+
+    document.addEventListener('DOMContentLoaded', () => {
+
+        // --- GLOBAL STATE ---
+
+        let allRecords = []; // All records from the main sheet (บันทึกรายรับ-รายจ่าย)
+
+        let allSuppliers = []; // All suppliers from the Suppliers sheet
+
+        let allProducts = []; // All products from the Products sheet
+
+        let dropdownOptions = { // Data for dropdowns/datalists
+
+            types: [], shopNames: [], categories: [], items: [], statuses: []
+
+        };
+
+        let currentEditingTransaction = null; // To store the transaction being edited
+
+        let currentEditingSupplier = null; // To store the supplier being edited
+
+        let currentEditingProduct = null; // To store the product being edited
+
+
+
+        // --- DOM ELEMENTS ---
+
+        const loaderOverlay = document.getElementById('loader-overlay');
+
+        const loaderText = document.getElementById('loader-text');
+
+        const appContainer = document.getElementById('app');
+
+        const toastContainer = document.getElementById('toast-container');
+
+        
+
+        const transactionEntryTabBtn = document.getElementById('transaction-entry-tab-btn');
+
+        const summaryTabBtn = document.getElementById('summary-tab-btn');
+
+        const suppliersTabBtn = document.getElementById('suppliers-tab-btn');
+
+        const productsTabBtn = document.getElementById('products-tab-btn');
+
+
+
+        const transactionEntryView = document.getElementById('transaction-entry-view');
+
+        const summaryView = document.getElementById('summary-view');
+
+        const suppliersView = document.getElementById('suppliers-view');
+
+        const productsView = document.getElementById('products-view');
+
+
+
+        const openTransactionModalBtn = document.getElementById('openTransactionModalBtn');
+
+        const transactionTableBody = document.getElementById('transactionTableBody');
+
+        const transactionTablePlaceholder = document.getElementById('transactionTablePlaceholder');
+
+
+
+        const transactionEntryModal = document.getElementById('transactionEntryModal');
+
+        const transactionModalTitle = document.getElementById('transactionModalTitle');
+
+        const transactionForm = document.getElementById('transactionForm');
+
+        const originalTransactionData = document.getElementById('originalTransactionData');
+
+        const transactionType = document.getElementById('transactionType');
+
+        const transactionDate = document.getElementById('transactionDate');
+
+        const shopName = document.getElementById('shopName');
+
+        const shopNamesDatalist = document.getElementById('shopNamesDatalist');
+
+        const productCategory = document.getElementById('productCategory');
+
+        const categoriesDatalist = document.getElementById('categoriesDatalist');
+
+        const itemName = document.getElementById('itemName');
+
+        const itemsDatalist = document.getElementById('itemsDatalist');
+
+        const amount = document.getElementById('amount');
+
+        const transactionStatus = document.getElementById('transactionStatus');
+
+        const paymentDate = document.getElementById('paymentDate');
+
+        const notes = document.getElementById('notes');
+
+        const cancelTransactionBtn = document.getElementById('cancelTransactionBtn');
+
+        const saveTransactionBtn = document.getElementById('saveTransactionBtn');
+
+
+
+        const printSummaryBtn = document.getElementById('print-summary-btn');
+
+        const downloadSummaryBtn = document.getElementById('download-summary-btn');
+
+        const summaryTableBody = document.getElementById('summary-table-body');
+
+        const summaryTableFoot = document.getElementById('summary-table-foot');
+
+        const summaryTablePlaceholder = document.getElementById('summary-table-placeholder');
+
+        // [ลบตัวแปร Filter เก่าออกแล้ว]
+
+        
+
+        const suppliersTableBody = document.getElementById('suppliers-table-body');
+
+        const suppliersTablePlaceholder = document.getElementById('suppliers-table-placeholder');
+
+        const addSupplierBtn = document.getElementById('addSupplierBtn');
+
+        const supplierFormModal = document.getElementById('supplierFormModal');
+
+        const supplierModalTitle = document.getElementById('supplierModalTitle');
+
+        const supplierForm = document.getElementById('supplierForm');
+
+        const originalSupplierID = document.getElementById('originalSupplierID');
+
+        const supplierID = document.getElementById('supplierID');
+
+        const supplierName = document.getElementById('supplierName');
+
+        const cancelSupplierBtn = document.getElementById('cancelSupplierBtn');
+
+        const saveSupplierBtn = document.getElementById('saveSupplierBtn');
+
+
+
+        const productsTableBody = document.getElementById('products-table-body');
+
+        const productsTablePlaceholder = document.getElementById('products-table-placeholder');
+
+        const addProductBtn = document.getElementById('addProductBtn');
+
+        const productFormModal = document.getElementById('productFormModal');
+
+        const productModalTitle = document.getElementById('productModalTitle');
+
+        const productForm = document.getElementById('productForm');
+
+        const originalProductID = document.getElementById('originalProductID');
+
+        const productID = document.getElementById('productID');
+
+        const productName = document.getElementById('productName');
+
+        const productCategorySelect = document.getElementById('productCategorySelect');
+
+        const cancelProductBtn = document.getElementById('cancelProductBtn');
+
+        const saveProductBtn = document.getElementById('saveProductBtn');
+
+        
+
+        const confirmModal = document.getElementById('confirmModal');
+
+        const confirmModalTitle = document.getElementById('confirmModalTitle');
+
+        const confirmModalMessage = document.getElementById('confirmModalMessage');
+
+        const confirmConfirmBtn = document.getElementById('confirmConfirmBtn');
+
+        const confirmCancelBtn = document.getElementById('confirmCancelBtn');
+
+
+
+        const inputModal = document.getElementById('inputModal');
+
+        const inputModalTitle = document.getElementById('inputModalTitle');
+
+        const inputModalMessage = document.getElementById('inputModalMessage');
+
+        const inputModalField = document.getElementById('inputModalField');
+
+        const inputConfirmBtn = document.getElementById('inputConfirmBtn');
+
+        const inputCancelBtn = document.getElementById('inputCancelBtn');
+
+        
+
+        const printContainer = document.getElementById('print-container');
+
+
+
+        const allModals = [confirmModal, inputModal, transactionEntryModal, supplierFormModal, productFormModal]; 
+
+
+
+        // New DOM elements for receipt printing
+
+        const receiptPrintStartDate = document.getElementById('receiptPrintStartDate');
+
+        const receiptPrintEndDate = document.getElementById('receiptPrintEndDate');
+
+        const printReceiptBtn = document.getElementById('printReceiptBtn');
+
+
+
+        // [NEW] Elements for Transaction Filter (ประกาศตัวแปรให้ JS รู้จัก HTML ที่เราเพิ่งวาง)
+
+        const transSearchInput = document.getElementById('transSearchInput');
+
+        const transFilterType = document.getElementById('transFilterType');
+
+        const transFilterStatus = document.getElementById('transFilterStatus');
+
+        const transResetBtn = document.getElementById('transResetBtn');
+
+
+
+        // --- UTILITY FUNCTIONS ---
+
+        
+
+        /**
+
+         * --- THIS IS THE UPDATED FUNCTION ---
+
+         * Handles the visual state of a button, switching between idle and loading states.
+
+         * This version correctly handles Font Awesome icons by removing and recreating
+
+         * the icon element, forcing it to re-render correctly.
+
+         * @param {HTMLButtonElement} button The button element to modify.
+
+         * @param {'loading' | 'idle'} state The target state for the button.
+
+         * @param {string} loadingText The text to display in the loading state.
+
+         * @param {string} loadingIcon The Font Awesome icon class for the loading state.
+
+         */
+
+        const setButtonState = (button, state, loadingText = 'กำลังโหลด...', loadingIcon = 'fa-spinner in-button-loader') => {
+
+            const textElement = button.querySelector('span');
+
+            const iconElement = button.querySelector('i');
+
+
+
+            if (state === 'loading') {
+
+                // Store original state using dataset for better practice
+
+                if (!button.dataset.originalText && textElement) {
+
+                    button.dataset.originalText = textElement.textContent;
+
+                }
+
+                if (!button.dataset.originalIcon && iconElement) {
+
+                    button.dataset.originalIcon = iconElement.className;
+
+                }
+
+
+
+                // Remove the current icon
+
+                if (iconElement) {
+
+                    iconElement.remove();
+
+                }
+
+
+
+                // Create and prepend a new spinner icon
+
+                const spinnerIcon = document.createElement('i');
+
+                spinnerIcon.className = `fa-solid ${loadingIcon}`;
+
+                button.prepend(spinnerIcon);
+
+
+
+                // Update text and disable the button
+
+                if (textElement) {
+
+                    textElement.textContent = loadingText;
+
+                }
+
+                button.disabled = true;
+
+
+
+            } else if (state === 'idle') {
+
+                // Remove the current icon (which should be the spinner)
+
+                if (iconElement) {
+
+                    iconElement.remove();
+
+                }
+
+
+
+                const originalText = button.dataset.originalText;
+
+                const originalIconClass = button.dataset.originalIcon;
+
+
+
+                // Restore the original icon if it existed
+
+                if (originalIconClass) {
+
+                    const originalIcon = document.createElement('i');
+
+                    originalIcon.className = originalIconClass;
+
+                    button.prepend(originalIcon);
+
+                }
+
+
+
+                // Restore the original text and enable the button
+
+                if (textElement && originalText) {
+
+                    textElement.textContent = originalText;
+
+                }
+
+                button.disabled = false;
+
+            }
+
+        };
+
+
+
+        
+
+        const showToast = (title, message, type = 'success') => {
+
+            const toastId = 'toast-' + Date.now();
+
+            const toast = document.createElement('div');
+
+            toast.id = toastId;
+
+            toast.className = `toast-item toast-${type}`;
+
+
+
+            let iconClass = '';
+
+            if (type === 'success') iconClass = 'fa-circle-check';
+
+            else if (type === 'error') iconClass = 'fa-circle-xmark';
+
+            else iconClass = 'fa-circle-info';
+
+
+
+            toast.innerHTML = `
+
+                <div class="toast-icon">
+
+                    <i class="fa-solid ${iconClass}"></i>
+
+                </div>
+
+                <div class="toast-content">
+
+                    <p class="toast-title">${title}</p>
+
+                    <p class="toast-message">${message}</p>
+
+                </div>
+
+            `;
+
+
+
+            toastContainer.appendChild(toast);
+
+
+
+            // Animate in
+
+            setTimeout(() => {
+
+                toast.classList.add('show');
+
+            }, 100);
+
+
+
+            // Animate out and remove
+
+            setTimeout(() => {
+
+                toast.classList.remove('show');
+
+                toast.classList.add('hide');
+
+                toast.addEventListener('transitionend', () => {
+
+                    toast.remove();
+
+                });
+
+            }, 4000); // Keep toast visible for 4 seconds
+
+        };
+
+
+
+
+
+        const showInitialLoader = (text) => { loaderText.textContent = text; loaderOverlay.style.display = 'flex'; };
+
+        const hideInitialLoader = () => { loaderOverlay.style.display = 'none'; };
+
+        const handleFailure = (error) => {
+
+            console.error(error);
+
+            showToast('เกิดข้อผิดพลาด', error.message || 'เกิดข้อผิดพลาดที่ไม่รู้จัก', 'error');
+
+            hideInitialLoader();
+
+        };
+
+
+
+        // --- Number to Thai Baht conversion ---
+
+        const T_NUM = ['', 'หนึ่ง', 'สอง', 'สาม', 'สี่', 'ห้า', 'หก', 'เจ็ด', 'แปด', 'เก้า'];
+
+        const T_UNIT = ['', 'สิบ', 'ร้อย', 'พัน', 'หมื่น', 'แสน', 'ล้าน'];
+
+        
+
+        function convert(numStr) {
+
+            let output = '';
+
+            const len = numStr.length;
+
+            for (let i = 0; i < len; i++) {
+
+                const digit = parseInt(numStr[i], 10);
+
+                const pos = len - i - 1; // Position from right (0=หน่วย, 1=สิบ, 2=ร้อย...)
+
+
+
+                if (isNaN(digit)) continue;
+
+
+
+                if (digit === 0) {
+
+                    if (pos === 1 && len > 1) { 
+
+                    } else if (digit === 0 && len === 1) {
+
+                        return 'ศูนย์';
+
+                    }
+
+                    continue;
+
+                }
+
+
+
+                let numWord = T_NUM[digit];
+
+                let unitWord = T_UNIT[pos];
+
+
+
+                if (pos === 1) { // Tens place
+
+                    if (digit === 2) {
+
+                        numWord = 'ยี่';
+
+                    } else if (digit === 1) {
+
+                        numWord = '';
+
+                    }
+
+                } else if (pos === 0 && digit === 1 && len > 1) { // Units place
+
+                    numWord = 'เอ็ด';
+
+                }
+
+                
+
+                output += numWord + unitWord;
+
+            }
+
+            return output;
+
+        }
+
+
+
+        const toThaiBaht = (number) => {
+
+            if (number === null || number === undefined || isNaN(number)) return "ศูนย์บาทถ้วน";
+
+            number = parseFloat(number);
+
+            if (number === 0) return "ศูนย์บาทถ้วน";
+
+
+
+            let [integerPart, decimalPart] = number.toFixed(2).split('.');
+
+
+
+            let bahtText = '';
+
+            if (integerPart !== '0') {
+
+                const integerNum = parseInt(integerPart, 10);
+
+                if (integerNum > 999999) {
+
+                    const millionPart = Math.floor(integerNum / 1000000);
+
+                    const remainderPart = integerNum % 1000000;
+
+                    bahtText += convert(String(millionPart)) + 'ล้าน';
+
+                    if (remainderPart > 0) {
+
+                        bahtText += convert(String(remainderPart));
+
+                    }
+
+                } else {
+
+                    bahtText += convert(integerPart);
+
+                }
+
+                bahtText += 'บาท';
+
+            }
+
+
+
+            let satangText = '';
+
+            if (decimalPart && decimalPart !== '00') {
+
+                satangText = convert(decimalPart) + 'สตางค์';
+
+            } else if (bahtText) {
+
+                satangText = 'ถ้วน';
+
+            }
+
+            
+
+            return (bahtText + satangText) || 'ศูนย์บาทถ้วน';
+
+        };
+
+
+
+        const formatDateForInput = (dateString) => {
+
+            if (!dateString) return '';
+
+            const date = new Date(dateString);
+
+            if (isNaN(date)) return '';
+
+            return date.toISOString().split('T')[0];
+
+        };
+
+        const formatDisplayDate = (dateString) => {
+
+            if (!dateString) return '';
+
+            const date = new Date(dateString);
+
+            if (isNaN(date)) return dateString;
+
+            return date.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+
+        };
+
+        const formatCurrency = (number) => {
+
+            if (number === null || number === undefined || isNaN(number)) return '0.00';
+
+            return Number(number).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        };
+
+
+
+        const populateDatalist = (datalistElement, optionsArray) => {
+
+            datalistElement.innerHTML = '';
+
+            optionsArray.forEach(optionText => {
+
+                const option = document.createElement('option');
+
+                option.value = optionText;
+
+                datalistElement.appendChild(option);
+
+            });
+
+        };
+
+
+
+        const populateSelect = (selectElement, optionsArray, includeAllOption = false, allOptionText = 'ทั้งหมด') => {
+
+            selectElement.innerHTML = '';
+
+            if (includeAllOption) {
+
+                selectElement.add(new Option(allOptionText, 'all')); 
+
+            }
+
+            optionsArray.forEach(optionText => {
+
+                selectElement.add(new Option(optionText, optionText));
+
+            });
+
+        };
+
+
+
+
+
+        const openModal = (modal) => {
+
+            if (!modal) return;
+
+            modal.classList.remove('hidden');
+
+            setTimeout(() => {
+
+                modal.querySelector('.modal-backdrop').classList.add('opacity-100');
+
+                modal.querySelector('.modal-content').classList.remove('scale-95');
+
+                modal.querySelector('.modal-content').classList.add('scale-100');
+
+            }, 10);
+
+        };
+
+
+
+        const closeModal = (modal) => {
+
+            if (!modal) return;
+
+            modal.querySelector('.modal-backdrop').classList.remove('opacity-100');
+
+            modal.querySelector('.modal-content').classList.add('scale-95');
+
+            modal.querySelector('.modal-content').classList.remove('scale-100');
+
+            setTimeout(() => {
+
+                modal.classList.add('hidden');
+
+            }, 300);
+
+            
+
+            if (modal.id === 'confirmModal') {
+
+                confirmConfirmBtn.classList.remove('btn-danger');
+
+                confirmConfirmBtn.classList.add('btn-primary');
+
+                setButtonState(confirmConfirmBtn, 'idle');
+
+            }
+
+        };
+
+
+
+        let onConfirmCallback = null;
+
+        const showConfirmModal = (title, message, onConfirm, confirmIcon = 'fa-circle-check') => {
+
+            confirmModalTitle.textContent = title;
+
+            confirmModalMessage.innerHTML = message;
+
+            onConfirmCallback = onConfirm;
+
+            
+
+            // Set button icon and style based on context
+
+            confirmConfirmBtn.querySelector('i').className = `fa-solid ${confirmIcon}`;
+
+            if (confirmIcon === 'fa-trash-can') {
+
+                confirmConfirmBtn.classList.remove('btn-primary');
+
+                confirmConfirmBtn.classList.add('btn-danger');
+
+            } else {
+
+                confirmConfirmBtn.classList.remove('btn-danger');
+
+                confirmConfirmBtn.classList.add('btn-primary');
+
+            }
+
+            
+
+            setButtonState(confirmConfirmBtn, 'idle');
+
+
+
+            openModal(confirmModal);
+
+        };
+
+
+
+        let onInputConfirmCallback = null;
+
+        const showInputModal = (title, message, onInputConfirm) => {
+
+            inputModalTitle.textContent = title;
+
+            inputModalMessage.textContent = message;
+
+            inputModalField.value = '';
+
+            onInputConfirmCallback = onInputConfirm;
+
+            openModal(inputModal);
+
+            inputModalField.focus();
+
+        };
+
+
+
+        // --- INITIALIZATION ---
+
+        // --- จุดที่ 1: แก้ไข initialize ---
+
+        function initialize() {
+
+            showInitialLoader('กำลังโหลดข้อมูล...');
+
+            google.script.run
+
+                .withSuccessHandler(response => {
+
+                    const data = JSON.parse(response);
+
+                    if (data.status === 'error') {
+
+                        handleFailure(new Error(data.message));
+
+                        return;
+
+                    }
+
+                    
+
+                    allRecords = data.records || [];
+
+                    allSuppliers = data.suppliers || [];
+
+                    allProducts = data.products || [];
+
+                    dropdownOptions = data.dropdownData;
+
+
+
+                    populateDropdowns(); // ฟังก์ชันนี้จะถูกแก้ในจุดที่ 3
+
+                    
+
+                    // ตั้งค่าเริ่มต้น
+
+                    renderTransactionTable();
+
+                    
+
+                    updateGlobalDashboard(allRecords, 'transaction-entry');
+
+
+
+                    hideInitialLoader();
+
+                    appContainer.classList.replace('opacity-0', 'opacity-100');
+
+
+
+                    // [ลบโค้ดตั้งวันที่วันนี้ออก] เพื่อให้แสดงข้อมูลทั้งหมดตั้งแต่แรก
+
+                    // const today = new Date().toISOString().split('T')[0];
+
+                    // receiptPrintStartDate.value = today;
+
+                    // receiptPrintEndDate.value = today;
+
+
+
+                })
+
+                .withFailureHandler(handleFailure)
+
+                .getInitialData();
+
+        }
+
+
+
+        // --- MULTI-SELECT FILTER LOGIC ---
+
+        // เก็บค่าที่เลือกไว้ (ถ้า Array ว่าง = เลือกทั้งหมด)
+
+        let currentFilters = { types: [], shops: [], categories: [], statuses: [] };
+
+
+
+        // ฟังก์ชันสร้าง Dropdown แบบเลือกได้หลายรายการ
+
+        // --- จุดที่ 2: แก้ไข renderMultiSelect ---
+
+        function renderMultiSelect(containerId, options, selectedValues, placeholder, onChangeCallback) {
+
+            const container = document.getElementById(containerId);
+
+            if (!container) return;
+
+            container.innerHTML = '';
+
+
+
+            const button = document.createElement('button');
+
+            button.className = 'form-input w-full flex justify-between items-center bg-white cursor-pointer';
+
+            button.type = 'button';
+
+            
+
+            const updateLabel = () => {
+
+                if (selectedValues.length === options.length) {
+
+                    button.innerHTML = `<span class="truncate text-slate-600">${placeholder} (ทั้งหมด)</span><i class="fa-solid fa-chevron-down text-xs text-slate-400"></i>`;
+
+                } else if (selectedValues.length === 0) {
+
+                    button.innerHTML = `<span class="truncate text-slate-400">${placeholder} (ไม่เลือก)</span><i class="fa-solid fa-chevron-down text-xs text-slate-400"></i>`;
+
+                } else {
+
+                    button.innerHTML = `<span class="truncate text-blue-600 font-semibold">เลือก ${selectedValues.length} รายการ</span><i class="fa-solid fa-chevron-down text-xs text-slate-400"></i>`;
+
+                }
+
+            };
+
+            updateLabel();
+
+
+
+            const dropdown = document.createElement('div');
+
+            dropdown.className = 'hidden absolute top-full left-0 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto z-50 p-2';
+
+
+
+            const createOption = (text, isChecked, onClick) => {
+
+                const div = document.createElement('div');
+
+                div.className = 'flex items-center p-2 hover:bg-slate-50 rounded cursor-pointer';
+
+                div.onclick = (e) => { e.stopPropagation(); onClick(); };
+
+                
+
+                const checkbox = document.createElement('input');
+
+                checkbox.type = 'checkbox';
+
+                checkbox.className = 'mr-2 rounded text-blue-600 focus:ring-blue-500 pointer-events-none';
+
+                checkbox.checked = isChecked;
+
+
+
+                const label = document.createElement('span');
+
+                label.className = 'text-sm text-slate-700';
+
+                label.textContent = text;
+
+
+
+                div.appendChild(checkbox);
+
+                div.appendChild(label);
+
+                return { div, checkbox };
+
+            };
+
+
+
+            // Logic เลือกทั้งหมด: ถ้าเลือกครบอยู่แล้วให้เคลียร์, ถ้ายังไม่ครบให้เลือกทั้งหมด
+
+            const isAllSelected = selectedValues.length === options.length;
+
+            const allOption = createOption('เลือกทั้งหมด', isAllSelected, () => {
+
+                if (selectedValues.length === options.length) {
+
+                    selectedValues.length = 0; // เคลียร์
+
+                } else {
+
+                    selectedValues.length = 0;
+
+                    options.forEach(o => selectedValues.push(o)); // เลือกหมด
+
+                }
+
+                renderList();
+
+                updateLabel();
+
+                onChangeCallback();
+
+            });
+
+            dropdown.appendChild(allOption.div);
+
+            dropdown.appendChild(document.createElement('div')).className = 'h-px bg-slate-100 my-1';
+
+
+
+            const listContainer = document.createElement('div');
+
+            dropdown.appendChild(listContainer);
+
+
+
+            const renderList = () => {
+
+                listContainer.innerHTML = '';
+
+                // อัปเดตสถานะปุ่มเลือกทั้งหมด
+
+                allOption.checkbox.checked = selectedValues.length === options.length;
+
+
+
+                options.forEach(opt => {
+
+                    const isSelected = selectedValues.includes(opt);
+
+                    const item = createOption(opt, isSelected, () => {
+
+                        if (isSelected) {
+
+                            const idx = selectedValues.indexOf(opt);
+
+                            if (idx > -1) selectedValues.splice(idx, 1);
+
+                        } else {
+
+                            selectedValues.push(opt);
+
+                        }
+
+                        renderList();
+
+                        updateLabel();
+
+                        onChangeCallback();
+
+                    });
+
+                    listContainer.appendChild(item.div);
+
+                });
+
+            };
+
+            renderList();
+
+
+
+            button.onclick = (e) => {
+
+                e.stopPropagation();
+
+                document.querySelectorAll('[id^="filter-"] .absolute').forEach(el => {
+
+                    if (el !== dropdown) el.classList.add('hidden');
+
+                });
+
+                dropdown.classList.toggle('hidden');
+
+            };
+
+
+
+            document.addEventListener('click', (e) => {
+
+                if (!container.contains(e.target)) dropdown.classList.add('hidden');
+
+            });
+
+
+
+            container.appendChild(button);
+
+            container.appendChild(dropdown);
+
+        }
+
+
+
+        // --- [เพิ่ม CSS พิเศษเพื่อให้ Date Picker กดติด 100% ไร้ Error] ---
+        if (!document.getElementById('custom-date-style')) {
+            const style = document.createElement('style');
+            style.id = 'custom-date-style';
+            style.innerHTML = `
+                .date-overlay-input::-webkit-calendar-picker-indicator {
+                    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+                    width: 100%; height: 100%; opacity: 0; cursor: pointer;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        // --- [แก้ไข] Render Table (ตารางแสดงผลและ UI เลือกวันที่แบบปลอดภัย) ---
+        function renderTransactionTable() {
+            transactionTableBody.innerHTML = '';
+            updateGlobalDashboard(allRecords, 'transaction-entry');
+
+            // ดึงข้อมูลมาเรียงลำดับ
+            let recordsToRender = [...allRecords].sort((a, b) => new Date(b['วันที่']) - new Date(a['วันที่']));
+
+            // ระบบค้นหาและตัวกรองหน้าตาราง
+            const searchVal = document.getElementById('transSearchInput')?.value.toLowerCase() || '';
+            const typeVal = document.getElementById('transFilterType')?.value || 'all';
+            const statusVal = document.getElementById('transFilterStatus')?.value || 'all';
+
+            recordsToRender = recordsToRender.filter(r => {
+                const matchSearch = searchVal === '' || 
+                                    String(r['ชื่อร้าน']).toLowerCase().includes(searchVal) || 
+                                    String(r['รายการ']).toLowerCase().includes(searchVal) || 
+                                    String(r['หมายเหตุ']).toLowerCase().includes(searchVal);
+                const matchType = typeVal === 'all' || r['ประเภท'] === typeVal;
+                const matchStatus = statusVal === 'all' || r['สถานะ'] === statusVal;
+                return matchSearch && matchType && matchStatus;
+            });
+
+            if (recordsToRender.length === 0) {
+                transactionTablePlaceholder.style.display = 'block';
+                return;
+            }
+            transactionTablePlaceholder.style.display = 'none';
+
+            recordsToRender.forEach(record => {
+                const row = document.createElement('tr');
+                row.className = 'border-b border-slate-100 hover:bg-slate-50 transition-colors duration-200 group';
+
+                const typeClass = record['ประเภท'] === 'รายรับ' ? 'type-income' : (record['ประเภท'] === 'รายจ่าย' ? 'type-expense' : 'bg-gray-100 text-gray-600');
+                const amountClass = record['ประเภท'] === 'รายรับ' ? 'text-green-600' : 'text-red-600';
+                
+                let statusClass = 'status-other';
+                if (record['สถานะ'] === 'จ่ายแล้ว') statusClass = 'status-paid';
+                else if (record['สถานะ'] === 'รอจ่าย') statusClass = 'status-pending';
+                else if (record['สถานะ'] === 'ยังไม่จ่าย') statusClass = 'status-unpaid';
+
+                // --- [UI ใหม่] แสดงวันที่แบบไทย พร้อมช่อง input โปร่งใสทับไว้ (ไม่ใช้ showPicker) ---
+                let dateHtml = '<span class="text-slate-300">-</span>';
+                if (record['สถานะ'] === 'จ่ายแล้ว') {
+                    let dateValue = record['วันที่จ่ายเงิน'] || new Date().toISOString().split('T')[0];
+                    if (dateValue.includes('T')) dateValue = dateValue.split('T')[0]; 
+                    
+                    const thaiDate = formatDisplayDate(dateValue);
+                    dateHtml = `
+                        <div class="relative flex items-center gap-2 p-1 rounded hover:bg-slate-100 transition-colors cursor-pointer w-max overflow-hidden">
+                            <i class="fa-regular fa-calendar-days text-blue-500 text-sm"></i>
+                            <span class="thai-date-display whitespace-nowrap text-sm text-slate-700 font-medium">${thaiDate}</span>
+                            <i class="fa-solid fa-check-double text-[0.55rem] text-emerald-500" title="บันทึกข้อมูลเรียบร้อย"></i>
+                            <input type="date" class="date-overlay-input absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" value="${dateValue}" onchange="handleQuickDateChange(this)" title="คลิกเพื่อแก้ไขวันที่">
+                        </div>
+                    `;
+                }
+
+                row.innerHTML = `
+                    <td class="p-4"><span class="badge ${typeClass}">${record['ประเภท']}</span></td>
+                    <td class="p-4 text-slate-600 font-medium">${formatDisplayDate(record['วันที่'])}</td>
+                    <td class="p-4 font-medium text-slate-800">${record['ชื่อร้าน']}</td>
+                    <td class="p-4"><span class="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs border border-slate-200">${record['หมวดหมู่สินค้า']}</span></td>
+                    <td class="p-4 text-slate-700">${record['รายการ']}</td>
+                    <td class="p-4 text-right font-bold ${amountClass}">${formatCurrency(record['จำนวนเงิน (บาท)'])}</td>
+                    <td class="p-4">
+                        <select class="status-select ${statusClass}" onchange="handleQuickStatusChange(this)">
+                            <option value="ยังไม่จ่าย" ${record['สถานะ'] === 'ยังไม่จ่าย' ? 'selected' : ''}>ยังไม่จ่าย</option>
+                            <option value="รอจ่าย" ${record['สถานะ'] === 'รอจ่าย' ? 'selected' : ''}>รอจ่าย</option>
+                            <option value="จ่ายแล้ว" ${record['สถานะ'] === 'จ่ายแล้ว' ? 'selected' : ''}>จ่ายแล้ว</option>
+                            <option value="อื่นๆ" ${record['สถานะ'] === 'อื่นๆ' ? 'selected' : ''}>อื่นๆ</option>
+                        </select>
+                    </td>
+                    <td class="p-4 text-sm">${dateHtml}</td>
+                    <td class="p-4 text-center">
+                        <div class="flex justify-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                            <button class="edit-transaction-btn btn btn-sm p-2 text-xs btn-secondary bg-white border border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-300" title="แก้ไข">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button class="delete-transaction-btn btn btn-sm p-2 text-xs btn-secondary bg-white border border-slate-200 text-slate-600 hover:text-red-600 hover:border-red-300" title="ลบ">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+
+                row.querySelector('.status-select').recordData = record; 
+                row.querySelector('.edit-transaction-btn').addEventListener('click', () => openTransactionForm(record));
+                row.querySelector('.delete-transaction-btn').addEventListener('click', () => {
+                    showConfirmModal('ยืนยันการลบ', `ต้องการลบรายการ "${record['รายการ']}" ยอด ${formatCurrency(record['จำนวนเงิน (บาท)'])} บาท?`, () => deleteTransaction(record), 'fa-trash-can');
+                });
+                transactionTableBody.appendChild(row);
+            });
+        }
+
+        // --- Helper: ฟังก์ชันจัดการวันที่ (ป้องกัน Timezone Error) ---
+        const safeDateStr = (dateVal) => {
+            if (!dateVal) return '';
+            if (typeof dateVal === 'string' && dateVal.includes('T')) return dateVal.split('T')[0];
+            if (typeof dateVal === 'string' && dateVal.length === 10) return dateVal;
+            try {
+                const d = new Date(dateVal);
+                if (isNaN(d.getTime())) return '';
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${y}-${m}-${day}`;
+            } catch(e) { return ''; }
+        };
+
+        // --- [แก้ไขสำคัญมาก] แปลงข้อมูลให้ตรงกับที่ Server ต้องการ (รวม transaction_id ด้วย!) ---
+        const buildPayload = (rec) => ({
+            transaction_id: rec['transaction_id'] || '', // ✅ สาเหตุที่ Error เพราะขาดตัวนี้ไป!
+            type: rec['ประเภท'] || '',
+            date: safeDateStr(rec['วันที่']),
+            shopName: rec['ชื่อร้าน'] || '',
+            category: rec['หมวดหมู่สินค้า'] || '',
+            item: rec['รายการ'] || '',
+            amount: parseFloat(rec['จำนวนเงิน (บาท)']) || 0,
+            status: rec['สถานะ'] || '',
+            paymentDate: safeDateStr(rec['วันที่จ่ายเงิน']),
+            notes: rec['หมายเหตุ'] || ''
+        });
+
+        // --- ฟังก์ชัน 1: เปลี่ยนสถานะ ---
+        window.handleQuickStatusChange = function(selectElement) {
+            let originalRecord = selectElement.recordData; 
+            if (!originalRecord && selectElement.dataset.originalRecord) {
+                try { originalRecord = JSON.parse(selectElement.dataset.originalRecord); } catch(e) {}
+            }
+            if (!originalRecord) return;
+
+            const oldStatus = originalRecord['สถานะ'];
+            const newStatus = selectElement.value;
+            const row = selectElement.closest('tr');
+            const dateCell = row ? row.cells[7] : null; 
+
+            const updateRowButtons = (recordData) => {
+                if (!row) return;
+                const jsonStr = JSON.stringify(recordData);
+                const editBtn = row.querySelector('.edit-transaction-btn');
+                const deleteBtn = row.querySelector('.delete-transaction-btn');
+                if (editBtn) { editBtn.dataset.transaction = jsonStr; editBtn.setAttribute('data-transaction', jsonStr); }
+                if (deleteBtn) { deleteBtn.dataset.transaction = jsonStr; deleteBtn.setAttribute('data-transaction', jsonStr); }
+            };
+
+            const executeUpdate = (statusToSave) => {
+                let saveDate = '';
+                let displayHtml = '<span class="text-slate-300">-</span>';
+                
+                if (statusToSave === 'จ่ายแล้ว') {
+                    if (originalRecord['วันที่จ่ายเงิน'] && oldStatus === 'จ่ายแล้ว') {
+                         saveDate = safeDateStr(originalRecord['วันที่จ่ายเงิน']);
+                    } else {
+                         const today = new Date();
+                         saveDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                    }
+                    const thaiDate = formatDisplayDate(saveDate);
+                    displayHtml = `
+                        <div class="relative flex items-center gap-2 p-1 rounded hover:bg-slate-100 transition-colors cursor-pointer w-max overflow-hidden">
+                            <i class="fa-regular fa-calendar-days text-blue-500 text-sm"></i>
+                            <span class="thai-date-display whitespace-nowrap text-sm text-slate-700 font-medium">${thaiDate}</span>
+                            <i class="fa-solid fa-check-double text-[0.55rem] text-emerald-500" title="บันทึกข้อมูลเรียบร้อย"></i>
+                            <input type="date" class="date-overlay-input absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" value="${saveDate}" onchange="handleQuickDateChange(this)" title="คลิกเพื่อแก้ไขวันที่">
+                        </div>
+                    `;
+                }
+
+                const newRecord = { ...originalRecord, 'สถานะ': statusToSave, 'วันที่จ่ายเงิน': saveDate };
+
+                // อัปเดต Memory โดยใช้ transaction_id (ถ้ามี) จะแม่นยำที่สุด
+                const recordIndex = allRecords.findIndex(r => {
+                    if (r['transaction_id'] && originalRecord['transaction_id']) {
+                        return r['transaction_id'] === originalRecord['transaction_id'];
+                    }
+                    // สำรองเผื่อไม่มี ID
+                    return safeDateStr(r['วันที่']) === safeDateStr(originalRecord['วันที่']) && 
+                           String(r['รายการ']).trim() === String(originalRecord['รายการ']).trim() && 
+                           (parseFloat(r['จำนวนเงิน (บาท)']) || 0) === (parseFloat(originalRecord['จำนวนเงิน (บาท)']) || 0);
+                });
+
+                if (recordIndex !== -1) {
+                    allRecords[recordIndex] = newRecord; 
+                }
+
+                selectElement.className = 'status-select w-full';
+                if (statusToSave === 'จ่ายแล้ว') selectElement.classList.add('status-paid');
+                else if (statusToSave === 'รอจ่าย') selectElement.classList.add('status-pending');
+                else if (statusToSave === 'ยังไม่จ่าย') selectElement.classList.add('status-unpaid');
+                else selectElement.classList.add('status-other');
+
+                if (dateCell) dateCell.innerHTML = displayHtml;
+                
+                selectElement.recordData = newRecord; 
+                updateRowButtons(newRecord);
+                updateGlobalDashboard(allRecords, 'transaction-entry');
+
+                selectElement.style.opacity = '0.5';
+                selectElement.disabled = true;
+                showToast('กำลังบันทึก...', 'กำลังอัปเดตสถานะ...', 'info');
+
+                // *** ส่งข้อมูลพร้อม transaction_id ไปให้ Server ***
+                const payloadOriginal = buildPayload(originalRecord);
+                const payloadNew = buildPayload(newRecord);
+
+                google.script.run
+                    .withSuccessHandler((response) => {
+                        const data = JSON.parse(response);
+                        selectElement.style.opacity = '1';
+                        selectElement.disabled = false;
+                        const confirmModal = document.getElementById('confirmModal');
+                        if (confirmModal) closeModal(confirmModal);
+                        
+                        if (data.status === 'success') {
+                            showToast('เรียบร้อย', 'บันทึกสถานะสำเร็จ', 'success');
+                            allRecords = data.records;
+                            updateGlobalDashboard(allRecords, 'transaction-entry');
+                        } else {
+                            handleFailure(new Error(data.message));
+                            revertUI();
+                        }
+                    })
+                    .withFailureHandler((err) => {
+                        handleFailure(err);
+                        revertUI();
+                    })
+                    .updateTransaction(JSON.stringify(payloadOriginal), JSON.stringify(payloadNew));
+
+                const revertUI = () => {
+                    selectElement.style.opacity = '1';
+                    selectElement.disabled = false;
+                    selectElement.value = oldStatus;
+                    selectElement.recordData = originalRecord;
+                    updateRowButtons(originalRecord);
+                    if (recordIndex !== -1) allRecords[recordIndex] = originalRecord;
+                    updateGlobalDashboard(allRecords, 'transaction-entry');
+                    if (document.getElementById('confirmModal')) closeModal(document.getElementById('confirmModal'));
+                    window.handleQuickStatusChange(selectElement); 
+                };
+            };
+
+            if (oldStatus === 'จ่ายแล้ว' && newStatus !== 'จ่ายแล้ว') {
+                selectElement.value = oldStatus; 
+                showConfirmModal(
+                    '⚠️ ยืนยันการแก้ไขสถานะ',
+                    `รายการนี้ถูกบันทึกว่า <b>"จ่ายแล้ว"</b> <br>การเปลี่ยนสถานะจะทำให้ <b>"วันที่จ่ายเงิน"</b> ถูกลบออก <br>คุณแน่ใจหรือไม่?`,
+                    () => { selectElement.value = newStatus; executeUpdate(newStatus); },
+                    'fa-circle-exclamation'
+                );
+            } else {
+                executeUpdate(newStatus);
+            }
+        };
+
+        // --- ฟังก์ชัน 2: เปลี่ยนวันที่ทันทีผ่าน Calendar Icon ---
+        window.handleQuickDateChange = function(inputElement) {
+            const row = inputElement.closest('tr');
+            const selectElement = row.querySelector('.status-select');
+            
+            let originalRecord = selectElement.recordData;
+            if (!originalRecord) return;
+
+            const newDate = inputElement.value; 
+            if (!newDate) return; 
+
+            const displaySpan = row.querySelector('.thai-date-display');
+            if (displaySpan) {
+                displaySpan.innerHTML = formatDisplayDate(newDate);
+            }
+
+            const newRecord = { ...originalRecord, 'วันที่จ่ายเงิน': newDate };
+
+            // อัปเดต Memory โดยใช้ transaction_id (ถ้ามี) จะแม่นยำที่สุด
+            const recordIndex = allRecords.findIndex(r => {
+                if (r['transaction_id'] && originalRecord['transaction_id']) {
+                    return r['transaction_id'] === originalRecord['transaction_id'];
+                }
+                return safeDateStr(r['วันที่']) === safeDateStr(originalRecord['วันที่']) && 
+                       String(r['รายการ']).trim() === String(originalRecord['รายการ']).trim() && 
+                       (parseFloat(r['จำนวนเงิน (บาท)']) || 0) === (parseFloat(originalRecord['จำนวนเงิน (บาท)']) || 0);
+            });
+            
+            if (recordIndex !== -1) allRecords[recordIndex] = newRecord;
+
+            selectElement.recordData = newRecord;
+            const jsonStr = JSON.stringify(newRecord);
+            const editBtn = row.querySelector('.edit-transaction-btn');
+            const deleteBtn = row.querySelector('.delete-transaction-btn');
+            if (editBtn) { editBtn.dataset.transaction = jsonStr; editBtn.setAttribute('data-transaction', jsonStr); }
+            if (deleteBtn) { deleteBtn.dataset.transaction = jsonStr; deleteBtn.setAttribute('data-transaction', jsonStr); }
+
+            inputElement.disabled = true;
+            selectElement.disabled = true;
+            showToast('กำลังบันทึก...', `อัปเดตวันที่เป็น: ${formatDisplayDate(newDate)}`, 'info');
+
+            // *** ส่งข้อมูลพร้อม transaction_id ไปให้ Server ***
+            const payloadOriginal = buildPayload(originalRecord);
+            const payloadNew = buildPayload(newRecord);
+
+            google.script.run
+                .withSuccessHandler((response) => {
+                    const data = JSON.parse(response);
+                    inputElement.disabled = false;
+                    selectElement.disabled = false;
+                    
+                    if (data.status === 'success') {
+                        showToast('เรียบร้อย', 'อัปเดตวันที่สำเร็จ', 'success');
+                        allRecords = data.records;
+                        updateGlobalDashboard(allRecords, 'transaction-entry');
+                    } else {
+                        handleFailure(new Error(data.message));
+                        revertDate();
+                    }
+                })
+                .withFailureHandler((err) => {
+                    handleFailure(err);
+                    revertDate();
+                })
+                .updateTransaction(JSON.stringify(payloadOriginal), JSON.stringify(payloadNew));
+                
+            const revertDate = () => {
+                inputElement.disabled = false;
+                selectElement.disabled = false;
+                inputElement.value = safeDateStr(originalRecord['วันที่จ่ายเงิน']);
+                if (displaySpan) displaySpan.innerHTML = formatDisplayDate(originalRecord['วันที่จ่ายเงิน']);
+                selectElement.recordData = originalRecord;
+            };
+        };
+
+        function renderSummaryTable() {
+
+            summaryTableBody.innerHTML = '';
+
+            // 1. กรองข้อมูลก่อน
+
+            const filteredData = applySummaryFilters(allRecords);
+
+
+
+            // 2. [เพิ่มใหม่] ส่งข้อมูลที่กรองแล้ว ไปให้ Dashboard คำนวณ
+
+            updateGlobalDashboard(filteredData, 'summary');
+
+
+
+            if (filteredData.length === 0) {
+
+                summaryTablePlaceholder.style.display = 'block';
+
+                summaryTableFoot.innerHTML = '';
+
+                return;
+
+            } else {
+
+                summaryTablePlaceholder.style.display = 'none';
+
+            }
+
+
+
+            filteredData.sort((a, b) => new Date(b['วันที่']) - new Date(a['วันที่']));
+
+
+
+            filteredData.forEach(record => {
+
+                const row = document.createElement('tr');
+
+                row.className = 'border-b border-slate-100 hover:bg-blue-50 transition-colors duration-200';
+
+                row.innerHTML = `
+
+                    <td class="p-4">${record['ประเภท'] || ''}</td>
+
+                    <td class="p-4">${formatDisplayDate(record['วันที่'])}</td>
+
+                    <td class="p-4">${record['ชื่อร้าน'] || ''}</td>
+
+                    <td class="p-4">${record['หมวดหมู่สินค้า'] || ''}</td>
+
+                    <td class="p-4">${record['รายการ'] || ''}</td>
+
+                    <td class="p-4 text-right">${formatCurrency(record['จำนวนเงิน (บาท)'])}</td>
+
+                    <td class="p-4">${record['สถานะ'] || ''}</td>
+
+                    <td class="p-4">${formatDisplayDate(record['วันที่จ่ายเงิน'])}</td>
+
+                    <td class="p-4">${record['หมายเหตุ'] || ''}</td>
+
+                `;
+
+                summaryTableBody.appendChild(row);
+
+            });
+
+            updateSummaryTableFooter(filteredData);
+
+        }
+
+
+
+        // --- จุดที่ 3: แก้ไข populateDropdowns ---
+
+        function populateDropdowns() {
+
+            // 1. Dropdown หน้าบันทึกรายการ (Single Select)
+
+            populateSelect(transactionType, dropdownOptions.types);
+
+            populateDatalist(shopNamesDatalist, dropdownOptions.shopNames);
+
+            populateDatalist(categoriesDatalist, dropdownOptions.categories);
+
+            populateDatalist(itemsDatalist, dropdownOptions.items);
+
+            populateSelect(transactionStatus, dropdownOptions.statuses);
+
+
+
+            // 2. Dropdown หน้าสรุปผล (Multi-select)
+
+            // [แก้] กำหนดค่าเริ่มต้นให้เลือก "ทั้งหมด" (Copy array มาใส่)
+
+            // ทำเฉพาะครั้งแรกที่ยังไม่มีค่า (หรือจะรีเซ็ตทุกครั้งที่โหลดใหม่ก็ได้)
+
+            currentFilters.types = [...dropdownOptions.types];
+
+            currentFilters.shops = [...dropdownOptions.shopNames];
+
+            currentFilters.categories = [...dropdownOptions.categories];
+
+            currentFilters.statuses = [...dropdownOptions.statuses];
+
+
+
+            renderMultiSelect('filter-type-container', dropdownOptions.types, currentFilters.types, 'ประเภท', renderSummaryTable);
+
+            renderMultiSelect('filter-shop-container', dropdownOptions.shopNames, currentFilters.shops, 'ชื่อร้าน', renderSummaryTable);
+
+            renderMultiSelect('filter-category-container', dropdownOptions.categories, currentFilters.categories, 'หมวดหมู่', renderSummaryTable);
+
+            renderMultiSelect('filter-status-container', dropdownOptions.statuses, currentFilters.statuses, 'สถานะ', renderSummaryTable);
+
+        }
+
+
+
+        // --- จุดที่ 4: แก้ไข applySummaryFilters ---
+
+        function applySummaryFilters(data) {
+
+            // [แก้] ตัดเงื่อนไข length === 0 ออก เพราะเรา init ค่าให้เต็มตั้งแต่ต้นแล้ว
+
+            // ดังนั้นถ้า user ติ๊กออกหมด array จะว่าง และผลลัพธ์คือไม่แสดงข้อมูล (ถูกต้องตาม UX)
+
+            return data.filter(record => 
+
+                currentFilters.types.includes(record['ประเภท']) &&
+
+                currentFilters.shops.includes(record['ชื่อร้าน']) &&
+
+                currentFilters.categories.includes(record['หมวดหมู่สินค้า']) &&
+
+                currentFilters.statuses.includes(record['สถานะ'])
+
+            );
+
+        }
+
+
+
+        function updateSummaryTableFooter(filteredData) {
+
+            let totalRevenue = 0;
+
+            let totalExpenses = 0;
+
+
+
+            filteredData.forEach(record => {
+
+                const amount = Number(record['จำนวนเงิน (บาท)']) || 0;
+
+                if (record['ประเภท'] === 'รายรับ') {
+
+                    totalRevenue += amount;
+
+                } else if (record['ประเภท'] === 'รายจ่าย') {
+
+                    totalExpenses += amount;
+
+                }
+
+            });
+
+
+
+            const netBalance = totalRevenue - totalExpenses;
+
+
+
+            summaryTableFoot.innerHTML = `
+
+                <tr>
+
+                    <td colspan="5" class="p-4 text-right text-lg">รวมรายรับ</td>
+
+                    <td class="p-4 text-right text-lg text-green-600">${formatCurrency(totalRevenue)}</td>
+
+                    <td colspan="3"></td>
+
+                </tr>
+
+                <tr>
+
+                    <td colspan="5" class="p-4 text-right text-lg">รวมรายจ่าย</td>
+
+                    <td class="p-4 text-right text-lg text-red-600">${formatCurrency(totalExpenses)}</td>
+
+                    <td colspan="3"></td>
+
+                </tr>
+
+                <tr>
+
+                    <td colspan="5" class="p-4 text-right text-lg">ยอดคงเหลือสุทธิ</td>
+
+                    <td class="p-4 text-right text-lg font-bold ${netBalance >= 0 ? 'text-blue-600' : 'text-red-600'}">${formatCurrency(netBalance)}</td>
+
+                    <td colspan="3"></td>
+
+                </tr>
+
+            `;
+
+        }
+
+
+
+
+
+        // --- TRANSACTION FORM MANAGEMENT ---
+
+        function openTransactionForm(record = null) {
+
+            transactionForm.reset();
+
+            currentEditingTransaction = record;
+
+
+
+            if (record) {
+
+                transactionModalTitle.textContent = "แก้ไขรายการรายรับ-รายจ่าย";
+
+                originalTransactionData.value = JSON.stringify({
+
+                transaction_id: record['transaction_id'],  // ✅ สำคัญมาก
+
+                type: record['ประเภท'],
+
+                date: formatDateForInput(record['วันที่']),
+
+                shopName: record['ชื่อร้าน'],
+
+                category: record['หมวดหมู่สินค้า'],
+
+                item: record['รายการ'],
+
+                amount: parseFloat(record['จำนวนเงิน (บาท)']),
+
+                status: record['สถานะ'],
+
+                paymentDate: formatDateForInput(record['วันที่จ่ายเงิน']),
+
+                notes: record['หมายเหตุ']
+
+            });
+
+
+
+                transactionType.value = record['ประเภท'] || '';
+
+                transactionDate.value = formatDateForInput(record['วันที่']);
+
+                shopName.value = record['ชื่อร้าน'] || '';
+
+                productCategory.value = record['หมวดหมู่สินค้า'] || '';
+
+                itemName.value = record['รายการ'] || '';
+
+                amount.value = Number(record['จำนวนเงิน (บาท)']).toFixed(2);
+
+                transactionStatus.value = record['สถานะ'] || '';
+
+                paymentDate.value = formatDateForInput(record['วันที่จ่ายเงิน']);
+
+                notes.value = record['หมายเหตุ'] || '';
+
+                
+
+                filterItemsBySelectedCategory(productCategory.value);
+
+
+
+            } else {
+
+                transactionModalTitle.textContent = "เพิ่มรายการใหม่";
+
+                originalTransactionData.value = '';
+
+                transactionDate.value = new Date().toISOString().split('T')[0];
+
+                transactionStatus.value = 'ยังไม่จ่าย';
+
+                populateDatalist(itemsDatalist, dropdownOptions.items);
+
+            }
+
+            openModal(transactionEntryModal);
+
+        }
+
+
+
+        function closeTransactionForm() { closeModal(transactionEntryModal); }
+
+
+
+        function handleTransactionFormSubmit(e) {
+
+            e.preventDefault();
+
+            const transactionData = {
+
+                type: transactionType.value,
+
+                date: transactionDate.value,
+
+                shopName: shopName.value.trim(),
+
+                category: productCategory.value.trim(),
+
+                item: itemName.value.trim(),
+
+                amount: parseFloat(amount.value) || 0,
+
+                status: transactionStatus.value,
+
+                paymentDate: paymentDate.value,
+
+                notes: notes.value.trim()
+
+            };
+
+
+
+            if (!transactionData.type || !transactionData.date || !transactionData.shopName || 
+
+                !transactionData.category || !transactionData.item || transactionData.amount <= 0 || !transactionData.status) {
+
+                showToast('ข้อมูลไม่ครบถ้วน', 'กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วนและถูกต้อง', 'error');
+
+                return;
+
+            }
+
+
+
+            setButtonState(saveTransactionBtn, 'loading', 'กำลังบันทึก...', 'fa-spinner in-button-loader');
+
+
+
+            const originalDataString = originalTransactionData.value;
+
+            const originalRecord = originalDataString ? JSON.parse(originalDataString) : null;
+
+
+
+            if (originalRecord) {
+
+                google.script.run
+
+                    .withSuccessHandler(handleSaveTransactionSuccess)
+
+                    .withFailureHandler(handleSaveTransactionFailure)
+
+                    .updateTransaction(JSON.stringify(originalRecord), JSON.stringify(transactionData));
+
+            } else {
+
+                google.script.run
+
+                    .withSuccessHandler(handleSaveTransactionSuccess)
+
+                    .withFailureHandler(handleSaveTransactionFailure)
+
+                    .saveTransaction(JSON.stringify(transactionData));
+
+            }
+
+        }
+
+
+
+        function handleSaveTransactionSuccess(response) {
+
+            setButtonState(saveTransactionBtn, 'idle');
+
+            const data = JSON.parse(response);
+
+            if (data.status === 'error') {
+
+                handleFailure(new Error(data.message));
+
+            } else {
+
+                showToast('สำเร็จ', data.message, 'success');
+
+                allRecords = data.records;
+
+                allSuppliers = data.suppliers;
+
+                allProducts = data.products;
+
+                dropdownOptions = data.dropdownData;
+
+                populateDropdowns();
+
+                renderTransactionTable();
+
+                renderSummaryTable();
+
+                closeTransactionForm();
+
+            }
+
+        }
+
+
+
+        function handleSaveTransactionFailure(error) {
+
+            setButtonState(saveTransactionBtn, 'idle');
+
+            handleFailure(error);
+
+        }
+
+
+
+        function deleteTransaction(transactionData) {
+
+            const transactionToDelete = {
+
+                transaction_id: transactionData['transaction_id'], // ✅ สำคัญ
+
+                type: transactionData['ประเภท'],
+
+                date: formatDateForInput(transactionData['วันที่']),
+
+                shopName: transactionData['ชื่อร้าน'],
+
+                category: transactionData['หมวดหมู่สินค้า'],
+
+                item: transactionData['รายการ'],
+
+                amount: parseFloat(transactionData['จำนวนเงิน (บาท)']),
+
+                status: transactionData['สถานะ'],
+
+                paymentDate: formatDateForInput(transactionData['วันที่จ่ายเงิน']),
+
+                notes: transactionData['หมายเหตุ']
+
+            };
+
+
+
+            google.script.run
+
+                .withSuccessHandler(response => {
+
+                    const data = JSON.parse(response);
+
+                    if (data.status === 'error') {
+
+                        handleFailure(new Error(data.message));
+
+                        return;
+
+                    }
+
+                    showToast('สำเร็จ', 'ลบรายการสำเร็จ', 'success');
+
+                    closeModal(confirmModal);
+
+                    allRecords = data.records;
+
+                    allSuppliers = data.suppliers;
+
+                    allProducts = data.products;
+
+                    dropdownOptions = data.dropdownData;
+
+                    populateDropdowns();
+
+                    renderTransactionTable();
+
+                    renderSummaryTable();
+
+                })
+
+                .withFailureHandler(error => {
+
+                    handleFailure(error);
+
+                    setButtonState(confirmConfirmBtn, 'idle');
+
+                })
+
+                .deleteTransaction(JSON.stringify(transactionToDelete));
+
+        }
+
+
+
+        // --- SUPPLIERS MANAGEMENT ---
+
+        function renderSuppliersTable() {
+
+            suppliersTableBody.innerHTML = '';
+
+            const sortedSuppliers = [...allSuppliers].sort((a, b) => (b['SupplierID'] || '').localeCompare(a['SupplierID'] || ''));
+
+
+
+            if (sortedSuppliers.length === 0) {
+
+                suppliersTablePlaceholder.style.display = 'block';
+
+                return;
+
+            }
+
+            suppliersTablePlaceholder.style.display = 'none';
+
+
+
+            sortedSuppliers.forEach(supplier => {
+
+                const row = document.createElement('tr');
+
+                row.className = 'border-b border-slate-100 hover:bg-blue-50 transition-colors duration-200';
+
+                row.innerHTML = `
+
+                    <td class="p-4 font-medium text-slate-800">${supplier['SupplierID'] || ''}</td>
+
+                    <td class="p-4">${supplier['SupplierName'] || ''}</td>
+
+                    <td class="p-4 text-center">
+
+                        <div class="flex justify-center gap-2">
+
+                            <button class="edit-supplier-btn btn btn-sm p-2 text-xs btn-secondary" title="แก้ไขผู้ขาย" data-supplier-id="${supplier['SupplierID']}" data-original-text="แก้ไข" data-original-icon="fa-solid fa-pen-to-square">
+
+                                <i class="fa-solid fa-pen-to-square"></i>
+
+                            </button>
+
+                            <button class="delete-supplier-btn btn btn-sm p-2 text-xs btn-danger" title="ลบผู้ขาย" data-supplier-id="${supplier['SupplierID']}" data-original-text="ลบ" data-original-icon="fa-solid fa-trash-can">
+
+                                <i class="fa-solid fa-trash-can"></i>
+
+                            </button>
+
+                        </div>
+
+                    </td>
+
+                `;
+
+                row.querySelector('.edit-supplier-btn').addEventListener('click', (e) => {
+
+                    const supplierId = e.currentTarget.dataset.supplierId;
+
+                    openSupplierForm(allSuppliers.find(s => s['SupplierID'] === supplierId));
+
+                });
+
+                row.querySelector('.delete-supplier-btn').addEventListener('click', (e) => {
+
+                    const supplierId = e.currentTarget.dataset.supplierId;
+
+                    showConfirmModal(
+
+                        'ยืนยันการลบผู้ขาย',
+
+                        `คุณแน่ใจหรือไม่ว่าต้องการลบผู้ขาย "${allSuppliers.find(s => s['SupplierID'] === supplierId)['SupplierName']}" (รหัส ${supplierId})?`,
+
+                        () => deleteSupplier(supplierId),
+
+                        'fa-trash-can'
+
+                    );
+
+                });
+
+                suppliersTableBody.appendChild(row);
+
+            });
+
+        }
+
+
+
+        function openSupplierForm(supplier = null) {
+
+            supplierForm.reset();
+
+            currentEditingSupplier = supplier;
+
+
+
+            if (supplier) {
+
+                supplierModalTitle.textContent = "แก้ไขข้อมูลผู้ขาย";
+
+                originalSupplierID.value = supplier['SupplierID'];
+
+                supplierID.value = supplier['SupplierID'];
+
+                supplierID.readOnly = true;
+
+                supplierName.value = supplier['SupplierName'];
+
+            } else {
+
+                supplierModalTitle.textContent = "เพิ่มผู้ขายใหม่";
+
+                originalSupplierID.value = '';
+
+                supplierID.readOnly = false;
+
+                const nextIdNum = allSuppliers.reduce((max, s) => {
+
+                    const num = parseInt((s['SupplierID'] || 'S0').replace('S', ''), 10);
+
+                    return isNaN(num) ? max : Math.max(max, num);
+
+                }, 0) + 1;
+
+                supplierID.value = 'S' + String(nextIdNum).padStart(3, '0');
+
+            }
+
+            openModal(supplierFormModal);
+
+        }
+
+
+
+        function closeSupplierForm() { closeModal(supplierFormModal); }
+
+
+
+        function handleSupplierFormSubmit(e) {
+
+            e.preventDefault();
+
+            const supplierData = {
+
+                originalSupplierID: originalSupplierID.value,
+
+                SupplierID: supplierID.value.trim(),
+
+                SupplierName: supplierName.value.trim()
+
+            };
+
+
+
+            if (!supplierData.SupplierID || !supplierData.SupplierName) {
+
+                showToast('ข้อมูลไม่ครบถ้วน', 'กรุณากรอกรหัสผู้ขายและชื่อผู้ขายให้ครบถ้วน', 'error');
+
+                return;
+
+            }
+
+
+
+            setButtonState(saveSupplierBtn, 'loading', 'กำลังบันทึก...', 'fa-spinner in-button-loader');
+
+
+
+            google.script.run
+
+                .withSuccessHandler(response => {
+
+                    setButtonState(saveSupplierBtn, 'idle');
+
+                    const data = JSON.parse(response);
+
+                    if (data.status === 'error') {
+
+                        handleFailure(new Error(data.message));
+
+                    } else {
+
+                        showToast('สำเร็จ', data.message, 'success');
+
+                        allSuppliers = data.suppliers;
+
+                        allRecords = data.records;
+
+                        allProducts = data.products;
+
+                        dropdownOptions = data.dropdownData;
+
+                        populateDropdowns();
+
+                        renderSuppliersTable();
+
+                        closeSupplierForm();
+
+                    }
+
+                })
+
+                .withFailureHandler(error => {
+
+                    setButtonState(saveSupplierBtn, 'idle');
+
+                    handleFailure(error);
+
+                })
+
+                .saveSupplier(JSON.stringify(supplierData));
+
+        }
+
+
+
+        function deleteSupplier(supplierId) {
+
+            google.script.run
+
+                .withSuccessHandler(response => {
+
+                    const data = JSON.parse(response);
+
+                    if (data.status === 'error') {
+
+                        handleFailure(new Error(data.message));
+
+                        return;
+
+                    }
+
+                    showToast('สำเร็จ', 'ลบผู้ขายสำเร็จ', 'success');
+
+                    closeModal(confirmModal);
+
+                    allSuppliers = data.suppliers;
+
+                    allRecords = data.records;
+
+                    allProducts = data.products;
+
+                    dropdownOptions = data.dropdownData;
+
+                    populateDropdowns();
+
+                    renderSuppliersTable();
+
+                })
+
+                .withFailureHandler(error => {
+
+                    handleFailure(error);
+
+                    setButtonState(confirmConfirmBtn, 'idle');
+
+                })
+
+                .deleteSupplier(supplierId);
+
+        }
+
+
+
+        // --- PRODUCTS MANAGEMENT ---
+
+        function renderProductsTable() {
+
+            productsTableBody.innerHTML = '';
+
+            const sortedProducts = [...allProducts].sort((a, b) => (b['ProductID'] || '').localeCompare(a['ProductID'] || ''));
+
+
+
+            if (sortedProducts.length === 0) {
+
+                productsTablePlaceholder.style.display = 'block';
+
+                return;
+
+            }
+
+            productsTablePlaceholder.style.display = 'none';
+
+
+
+            sortedProducts.forEach(product => {
+
+                const row = document.createElement('tr');
+
+                row.className = 'border-b border-slate-100 hover:bg-blue-50 transition-colors duration-200';
+
+                row.innerHTML = `
+
+                    <td class="p-4 font-medium text-slate-800">${product['ProductID'] || ''}</td>
+
+                    <td class="p-4">${product['ProductName'] || ''}</td>
+
+                    <td class="p-4">${product['Category'] || ''}</td>
+
+                    <td class="p-4 text-center">
+
+                        <div class="flex justify-center gap-2">
+
+                            <button class="edit-product-btn btn btn-sm p-2 text-xs btn-secondary" title="แก้ไขสินค้า" data-product-id="${product['ProductID']}" data-original-text="แก้ไข" data-original-icon="fa-solid fa-pen-to-square">
+
+                                <i class="fa-solid fa-pen-to-square"></i>
+
+                            </button>
+
+                            <button class="delete-product-btn btn btn-sm p-2 text-xs btn-danger" title="ลบสินค้า" data-product-id="${product['ProductID']}" data-original-text="ลบ" data-original-icon="fa-solid fa-trash-can">
+
+                                <i class="fa-solid fa-trash-can"></i>
+
+                            </button>
+
+                        </div>
+
+                    </td>
+
+                `;
+
+                row.querySelector('.edit-product-btn').addEventListener('click', (e) => {
+
+                    const productId = e.currentTarget.dataset.productId;
+
+                    openProductForm(allProducts.find(p => p['ProductID'] === productId));
+
+                });
+
+                row.querySelector('.delete-product-btn').addEventListener('click', (e) => {
+
+                    const productId = e.currentTarget.dataset.productId;
+
+                    showConfirmModal(
+
+                        'ยืนยันการลบสินค้า',
+
+                        `คุณแน่ใจหรือไม่ว่าต้องการลบสินค้า "${allProducts.find(p => p['ProductID'] === productId)['ProductName']}" (รหัส ${productId})?`,
+
+                        () => deleteProduct(productId),
+
+                        'fa-trash-can'
+
+                    );
+
+                });
+
+                productsTableBody.appendChild(row);
+
+            });
+
+        }
+
+        
+
+        function generateNewProductId(category) {
+
+            const productIDHelper = document.getElementById('productIDHelper');
+
+            if (!category) {
+
+                productID.value = '';
+
+                productIDHelper.textContent = 'กรุณาเลือกหมวดหมู่เพื่อสร้างรหัสสินค้า';
+
+                return;
+
+            }
+
+            const prefixMap = { 'บริโภค': 'P-B', 'อุปโภค': 'P-U', 'อื่นๆ': 'P-O' };
+
+            const prefix = prefixMap[category];
+
+            if (!prefix) {
+
+                productID.value = '';
+
+                productIDHelper.textContent = 'หมวดหมู่ไม่ถูกต้อง';
+
+                return;
+
+            }
+
+
+
+            const relevantProducts = allProducts.filter(p => p['ProductID'] && p['ProductID'].startsWith(prefix));
+
+            const maxNum = relevantProducts.reduce((max, p) => {
+
+                const numPart = p['ProductID'].replace(prefix, '');
+
+                const num = parseInt(numPart, 10);
+
+                return isNaN(num) ? max : Math.max(max, num);
+
+            }, 0);
+
+            
+
+            const nextIdNum = maxNum + 1;
+
+            const newId = prefix + String(nextIdNum).padStart(3, '0');
+
+            productID.value = newId;
+
+            productIDHelper.textContent = `รหัสสินค้าถัดไปสำหรับหมวดหมู่นี้คือ: ${newId}`;
+
+        }
+
+
+
+        function openProductForm(product = null) {
+
+            productForm.reset();
+
+            currentEditingProduct = product;
+
+
+
+            if (product) {
+
+                productModalTitle.textContent = "แก้ไขข้อมูลสินค้า";
+
+                originalProductID.value = product['ProductID'];
+
+                productID.value = product['ProductID'];
+
+                productID.readOnly = true;
+
+                productName.value = product['ProductName'];
+
+                productCategorySelect.value = product['Category'];
+
+                document.getElementById('productIDHelper').textContent = `รหัสสินค้า: ${product['ProductID']}`;
+
+            } else {
+
+                productModalTitle.textContent = "เพิ่มสินค้าใหม่";
+
+                originalProductID.value = '';
+
+                productID.readOnly = true;
+
+                productCategorySelect.value = '';
+
+                generateNewProductId(null);
+
+            }
+
+            openModal(productFormModal);
+
+        }
+
+
+
+        function closeProductForm() { closeModal(productFormModal); }
+
+
+
+        function handleProductFormSubmit(e) {
+
+            e.preventDefault();
+
+            const productData = {
+
+                originalProductID: originalProductID.value,
+
+                ProductID: productID.value.trim(),
+
+                ProductName: productName.value.trim(),
+
+                Category: productCategorySelect.value
+
+            };
+
+
+
+            if (!productData.ProductID || !productData.ProductName || !productData.Category) {
+
+                showToast('ข้อมูลไม่ครบถ้วน', 'กรุณากรอกข้อมูลสินค้าให้ครบถ้วน', 'error');
+
+                return;
+
+            }
+
+
+
+            setButtonState(saveProductBtn, 'loading', 'กำลังบันทึก...', 'fa-spinner in-button-loader');
+
+
+
+            google.script.run
+
+                .withSuccessHandler(response => {
+
+                    setButtonState(saveProductBtn, 'idle');
+
+                    const data = JSON.parse(response);
+
+                    if (data.status === 'error') {
+
+                        handleFailure(new Error(data.message));
+
+                    } else {
+
+                        showToast('สำเร็จ', data.message, 'success');
+
+                        allProducts = data.products;
+
+                        allRecords = data.records;
+
+                        allSuppliers = data.suppliers;
+
+                        dropdownOptions = data.dropdownData;
+
+                        populateDropdowns();
+
+                        renderProductsTable();
+
+                        closeProductForm();
+
+                    }
+
+                })
+
+                .withFailureHandler(error => {
+
+                    setButtonState(saveProductBtn, 'idle');
+
+                    handleFailure(error);
+
+                })
+
+                .saveProduct(JSON.stringify(productData));
+
+        }
+
+
+
+        function deleteProduct(productId) {
+
+            google.script.run
+
+                .withSuccessHandler(response => {
+
+                    const data = JSON.parse(response);
+
+                    if (data.status === 'error') {
+
+                        handleFailure(new Error(data.message));
+
+                        return;
+
+                    }
+
+                    showToast('สำเร็จ', 'ลบสินค้าสำเร็จ', 'success');
+
+                    closeModal(confirmModal);
+
+                    allProducts = data.products;
+
+                    allRecords = data.records;
+
+                    allSuppliers = data.suppliers;
+
+                    dropdownOptions = data.dropdownData;
+
+                    populateDropdowns();
+
+                    renderProductsTable();
+
+                })
+
+                .withFailureHandler(error => {
+
+                    handleFailure(error);
+
+                    setButtonState(confirmConfirmBtn, 'idle');
+
+                })
+
+                .deleteProduct(productId);
+
+        }
+
+
+
+        productCategorySelect.addEventListener('change', () => {
+
+            if (!currentEditingProduct) {
+
+                generateNewProductId(productCategorySelect.value);
+
+            }
+
+        });
+
+
+
+        productCategory.addEventListener('change', (e) => {
+
+            const selectedCategory = e.target.value;
+
+            filterItemsBySelectedCategory(selectedCategory);
+
+        });
+
+
+
+        function filterItemsBySelectedCategory(selectedCategory) {
+
+            const filteredItems = selectedCategory === '' 
+
+                ? dropdownOptions.items
+
+                : allProducts.filter(p => p['Category'] === selectedCategory)
+
+                               .map(p => p['ProductName']);
+
+            
+
+            populateDatalist(itemsDatalist, filteredItems);
+
+            
+
+            // [FIXED] ลบ Logic ที่สั่งเคลียร์ค่าทิ้ง เพื่อแก้ปัญหาข้อมูลหายตอนกดแก้ไข
+
+            // if (!filteredItems.includes(itemName.value)) {
+
+            //     itemName.value = '';
+
+            // }
+
+        }
+
+
+
+
+
+        // --- PRINT & DOWNLOAD FUNCTIONS ---
+
+        function initiatePrintProcess(contentHtml, title) {
+
+            document.getElementById('app').classList.add('no-print');
+
+            allModals.forEach(modal => modal.classList.add('no-print'));
+
+            printContainer.innerHTML = contentHtml;
+
+            document.body.classList.add('printing-active');
+
+            window.print();
+
+            setTimeout(() => {
+
+                printContainer.innerHTML = '';
+
+                document.getElementById('app').classList.remove('no-print');
+
+                allModals.forEach(modal => modal.classList.remove('no-print'));
+
+                document.body.classList.remove('printing-active');
+
+            }, 500);
+
+        }
+
+
+
+        function handlePrintSummary(recordsToPrint) {
+
+            if (!recordsToPrint || recordsToPrint.length === 0) { 
+
+                showToast('ไม่มีข้อมูล', 'ไม่มีข้อมูลให้พิมพ์สรุป', 'error');
+
+                return; 
+
+            }
+
+            setButtonState(printSummaryBtn, 'loading', 'กำลังสร้าง...', 'fa-spinner in-button-loader');
+
+            const contentHtml = generateSummaryReportHTML(recordsToPrint);
+
+            initiatePrintProcess(contentHtml, 'พิมพ์สรุปรายรับ-รายจ่าย');
+
+            setButtonState(printSummaryBtn, 'idle');
+
+        }
+
+
+
+        function generateSummaryReportHTML(records) {
+
+            const formattedDate = new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+
+            let totalRevenue = 0;
+
+            let totalExpenses = 0;
+
+            const sortedRecordsForPrint = [...records].sort((a, b) => new Date(a['วันที่']) - new Date(b['วันที่']));
+
+            let tableRowsHtml = sortedRecordsForPrint.map(record => {
+
+                const amount = Number(record['จำนวนเงิน (บาท)']) || 0;
+
+                if (record['ประเภท'] === 'รายรับ') {
+
+                    totalRevenue += amount;
+
+                } else if (record['ประเภท'] === 'รายจ่าย') {
+
+                    totalExpenses += amount;
+
+                }
+
+                return `
+
+                    <tr>
+
+                        <td style="text-align: center; width: 7%;">${record['ประเภท'] || ''}</td>
+
+                        <td style="text-align: center; width: 13%; white-space: nowrap;">${formatDisplayDate(record['วันที่'])}</td>
+
+                        <td style="text-align: center; width: 14%;">${record['ชื่อร้าน'] || ''}</td>
+
+                        <td style="text-align: center; width: 11%;">${record['หมวดหมู่สินค้า'] || ''}</td>
+
+                        <td style="text-align: center; width: 15%;">${record['รายการ'] || ''}</td>
+
+                        <td style="text-align: right; width: 10%;">${formatCurrency(record['จำนวนเงิน (บาท)'])}</td>
+
+                        <td style="text-align: center; width: 7%;">${record['สถานะ'] || ''}</td>
+
+                        <td style="text-align: center; width: 13%; white-space: nowrap;">${formatDisplayDate(record['วันที่จ่ายเงิน'])}</td>
+
+                        <td style="text-align: center; width: 10%;">${record['หมายเหตุ'] || ''}</td>
+
+                    </tr>
+
+                `;
+
+            }).join('');
+
+            const netBalance = totalRevenue - totalExpenses;
+
+            return `<div class="summary-report-page">
+
+                <div style="text-align: center; margin-bottom: 1rem;">
+
+                    <h1 style="font-size: 16pt; font-weight: 700; margin-bottom: 0.25rem;">รายงานสรุปรายรับ-รายจ่าย</h1>
+
+                    <h2 style="font-size: 14pt; font-weight: 600; margin-bottom: 0.5rem;">ร้านค้าสวัสดิการ โรงเรียนวัดไร่ขิงวิทยา</h2>
+
+                </div>
+
+                <div style="margin-bottom: 1.5rem; font-size: 12pt; line-height: 1.8;">
+
+                    <p><strong>วันที่พิมพ์รายงาน:</strong> ${formattedDate}</p>
+
+                </div>
+
+                <table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+
+                    <thead><tr>
+
+                        <th style="width: 7%; text-align: center;">ประเภท</th>
+
+                        <th style="width: 13%; text-align: center;">วันที่</th>
+
+                        <th style="width: 14%; text-align: center;">ชื่อร้าน</th>
+
+                        <th style="width: 11%; text-align: center;">หมวดหมู่สินค้า</th>
+
+                        <th style="width: 15%; text-align: center;">รายการ</th>
+
+                        <th style="width: 10%; text-align: right;">จำนวนเงิน (บาท)</th>
+
+                        <th style="width: 7%; text-align: center;">สถานะ</th>
+
+                        <th style="width: 13%; text-align: center;">วันที่จ่ายเงิน</th>
+
+                        <th style="width: 10%; text-align: center;">หมายเหตุ</th>
+
+                    </tr></thead>
+
+                    <tbody>
+
+                        ${tableRowsHtml}
+
+                        <tr class="total-row"><td colspan="5" style="text-align: right;">รวมรายรับ:</td><td style="text-align: right;">${formatCurrency(totalRevenue)}</td><td colspan="3"></td></tr>
+
+                        <tr class="total-row"><td colspan="5" style="text-align: right;">รวมรายจ่าย:</td><td style="text-align: right;">${formatCurrency(totalExpenses)}</td><td colspan="3"></td></tr>
+
+                        <tr class="total-row"><td colspan="5" style="text-align: right;">ยอดคงเหลือสุทธิ:</td><td style="text-align: right;">${formatCurrency(netBalance)}</td><td colspan="3"></td></tr>
+
+                    </tbody>
+
+                </table>
+
+                <div style="text-align: right; margin-top: 1rem; font-weight: bold;">(${toThaiBaht(netBalance)})</div>
+
+                <div style="margin-top: 3rem; text-align: center;"><p>....................................................</p><p>ผู้จัดทำรายงาน</p></div>
+
+            </div>`;
+
+        }
+
+
+
+        function handleDownloadSummary(recordsToDownload) {
+
+            if (!recordsToDownload || recordsToDownload.length === 0) { 
+
+                showToast('ไม่มีข้อมูล', 'ไม่มีข้อมูลให้ดาวน์โหลด', 'error');
+
+                return; 
+
+            }
+
+            setButtonState(downloadSummaryBtn, 'loading', 'กำลังสร้าง...', 'fa-spinner in-button-loader');
+
+            const dataForExport = recordsToDownload.map(record => ({
+
+                'ประเภท': record['ประเภท'], 'วันที่': formatDisplayDate(record['วันที่']), 'ชื่อร้าน': record['ชื่อร้าน'],
+
+                'หมวดหมู่สินค้า': record['หมวดหมู่สินค้า'], 'รายการ': record['รายการ'], 'จำนวนเงิน (บาท)': Number(record['จำนวนเงิน (บาท)']),
+
+                'สถานะ': record['สถานะ'], 'วันที่จ่ายเงิน': formatDisplayDate(record['วันที่จ่ายเงิน']), 'หมายเหตุ': record['หมายเหตุ']
+
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(dataForExport);
+
+            const workbook = XLSX.utils.book_new();
+
+            XLSX.utils.book_append_sheet(workbook, worksheet, "ExpenseIncomeData");
+
+            const cols = Object.keys(dataForExport[0]);
+
+            const colWidths = cols.map(key => ({ wch: dataForExport.reduce((w, r) => Math.max(w, String(r[key] || '').length), 10) + 2 }));
+
+            worksheet["!cols"] = colWidths;
+
+            XLSX.writeFile(workbook, "สรุปรายรับ-รายจ่ายร้านค้าสวัสดิการ.xlsx");
+
+            setButtonState(downloadSummaryBtn, 'idle');
+
+        }
+
+
+
+        function generateReceiptHTML(records, startDateString, endDateString) {
+
+            const filteredExpenses = records.filter(record => {
+
+                const recordDateObj = new Date(record['วันที่']);
+
+                const normalizedRecordDate = new Date(recordDateObj.getFullYear(), recordDateObj.getMonth(), recordDateObj.getDate());
+
+                const startDateObj = new Date(startDateString);
+
+                const endDateObj = new Date(endDateString);
+
+                const normalizedStartDate = new Date(startDateObj.getFullYear(), startDateObj.getMonth(), startDateObj.getDate());
+
+                const normalizedEndDate = new Date(endDateObj.getFullYear(), endDateObj.getMonth(), endDateObj.getDate(), 23, 59, 59, 999);
+
+                return record['ประเภท'] === 'รายจ่าย' && !isNaN(normalizedRecordDate.getTime()) && normalizedRecordDate >= normalizedStartDate && normalizedRecordDate <= normalizedEndDate;
+
+            }).sort((a, b) => new Date(a['วันที่']) - new Date(b['วันที่']));
+
+
+
+            if (filteredExpenses.length === 0) {
+
+                return `<div class="receipt-print-page"><p style="text-align: center;">ไม่มีรายการจ่ายเงินในช่วงวันที่ที่เลือก</p></div>`;
+
+            }
+
+
+
+            let totalAmount = 0;
+
+            let tableRowsHtml = filteredExpenses.map((record, index) => {
+
+                const amount = Number(record['จำนวนเงิน (บาท)']) || 0;
+
+                totalAmount += amount;
+
+                return `
+
+                    <tr>
+
+                        <td style="text-align: center; width: 3%;">${index + 1}</td>
+
+                        <td style="text-align: center; width: 15%; white-space: nowrap;">${formatDisplayDate(record['วันที่'])}</td>
+
+                        <td style="text-align: center; width: 15%;">${record['ชื่อร้าน'] || ''}</td>
+
+                        <td style="text-align: center; width: 18%;">${record['รายการ'] || ''}</td>
+
+                        <td style="text-align: right; width: 10%;">${formatCurrency(amount)}</td>
+
+                        <td style="text-align: center; width: 8%;">${record['ผู้รับเงิน'] || ''}</td>
+
+                        <td style="text-align: center; width: 8%;">${record['ผู้จ่ายเงิน'] || ''}</td>
+
+                        <td style="text-align: center; width: 15%; white-space: nowrap;">${formatDisplayDate(record['วันที่จ่ายเงิน'])}</td>
+
+                        <td style="text-align: center; width: 8%;">${record['หมายเหตุ'] || ''}</td>
+
+                    </tr>
+
+                `;
+
+            }).join('');
+
+
+
+            const reportDate = new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+
+            const dateRangeText = `ตั้งแต่วันที่ ${formatDisplayDate(startDateString)} ถึง ${formatDisplayDate(endDateString)}`;
+
+
+
+            return `<div class="receipt-print-page">
+
+                <div style="text-align: center; margin-bottom: 1rem;">
+
+                    <h1 style="font-size: 16pt; font-weight: 700; margin-bottom: 0.25rem;">รายการจ่ายเงิน บิลใบเสร็จ</h1>
+
+                    <h2 style="font-size: 14pt; font-weight: 600; margin-bottom: 0.5rem;">ร้านค้าสวัสดิการ โรงเรียนวัดไร่ขิงวิทยา</h2>
+
+                </div>
+
+                <div style="margin-bottom: 1.5rem; font-size: 10pt; line-height: 1.8; text-align: center;">
+
+                    <p><strong>วันที่พิมพ์รายงาน:</strong> ${reportDate}</p>
+
+                    <p><strong>ช่วงวันที่:</strong> ${dateRangeText}</p>
+
+                </div>
+
+                <table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+
+                    <thead><tr>
+
+                        <th style="width: 3%; text-align: center;">ที่</th>
+
+                        <th style="width: 15%; text-align: center;">วัน เดือน ปี ส่งบิล</th>
+
+                        <th style="width: 15%; text-align: center;">ร้านค้า</th>
+
+                        <th style="width: 18%; text-align: center;">รายการ</th>
+
+                        <th style="width: 10%; text-align: right;">จำนวนเงิน (บาท)</th>
+
+                        <th style="width: 8%; text-align: center;">ผู้รับเงิน</th>
+
+                        <th style="width: 8%; text-align: center;">ผู้จ่ายเงิน</th>
+
+                        <th style="width: 15%; text-align: center;">วัน เดือน ปี จ่ายเงิน</th>
+
+                        <th style="width: 8%; text-align: center;">หมายเหตุ</th>
+
+                    </tr></thead>
+
+                    <tbody>
+
+                        ${tableRowsHtml}
+
+                        <tr class="total-row"><td colspan="4" style="text-align: right; font-size: 11pt;">รวมทั้งสิ้น:</td><td style="text-align: right; font-size: 11pt;">${formatCurrency(totalAmount)}</td><td colspan="4"></td></tr>
+
+                    </tbody>
+
+                </table>
+
+                <div style="text-align: right; margin-top: 1rem; font-weight: bold; font-size: 11pt;">(${toThaiBaht(totalAmount)})</div>
+
+                <div style="margin-top: 3rem; text-align: center;"><p>....................................................</p><p>ผู้จัดทำรายงาน</p></div>
+
+            </div>`;
+
+        }
+
+
+
+        // --- EVENT LISTENERS ---
+
+        openTransactionModalBtn.addEventListener('click', () => openTransactionForm());
+
+        transactionForm.addEventListener('submit', handleTransactionFormSubmit);
+
+        cancelTransactionBtn.addEventListener('click', closeTransactionForm);
+
+        transactionEntryModal.querySelector('.close-modal-btn').addEventListener('click', () => closeModal(transactionEntryModal));
+
+        transactionEntryModal.querySelector('.modal-backdrop').addEventListener('click', closeTransactionForm);
+
+
+
+        // [ลบ Event Listener ของ Filter เก่าออก เพราะระบบ Multi-select จัดการให้แล้ว]
+
+
+
+        printSummaryBtn.addEventListener('click', () => handlePrintSummary(applySummaryFilters(allRecords)));
+
+        downloadSummaryBtn.addEventListener('click', () => handleDownloadSummary(applySummaryFilters(allRecords)));
+
+        
+
+        printReceiptBtn.addEventListener('click', () => {
+
+            const startDate = receiptPrintStartDate.value;
+
+            const endDate = receiptPrintEndDate.value;
+
+
+
+            if (!startDate || !endDate) {
+
+                showToast('ข้อมูลไม่ครบถ้วน', 'กรุณาเลือกช่วงวันที่สำหรับพิมพ์ใบเสร็จ', 'error');
+
+                return;
+
+            }
+
+            if (new Date(startDate) > new Date(endDate)) {
+
+                showToast('ข้อมูลไม่ถูกต้อง', 'วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด', 'error');
+
+                return;
+
+            }
+
+            setButtonState(printReceiptBtn, 'loading', 'กำลังสร้าง...', 'fa-spinner in-button-loader');
+
+            const contentHtml = generateReceiptHTML(allRecords, startDate, endDate);
+
+            initiatePrintProcess(contentHtml, 'พิมพ์ใบเสร็จรายการจ่ายเงิน');
+
+            setButtonState(printReceiptBtn, 'idle');
+
+        });
+
+
+
+        const tabs = {
+
+            'transaction-entry-tab-btn': transactionEntryView, 
+
+            'summary-tab-btn': summaryView,
+
+            'suppliers-tab-btn': suppliersView,
+
+            'products-tab-btn': productsView
+
+        };
+
+
+
+        // --- ส่วนจัดการการเปลี่ยนหน้าและอัปเดต Dashboard ---
+
+        const switchTab = (activeBtnId, passwordProtected = false) => {
+
+            const showView = () => {
+
+                Object.keys(tabs).forEach(btnId => {
+
+                    const view = tabs[btnId];
+
+                    const btn = document.getElementById(btnId);
+
+                    if (btnId === activeBtnId) {
+
+                        view.classList.remove('hidden');
+
+                        setTimeout(() => view.classList.remove('opacity-0'), 10); 
+
+                        btn.classList.add('active');
+
+                    } else {
+
+                        view.classList.add('opacity-0');
+
+                        setTimeout(() => view.classList.add('hidden'), 300); 
+
+                        btn.classList.remove('active');
+
+                    }
+
+                });
+
+
+
+                // [แก้ไขแล้ว] แยกการอัปเดต Dashboard ตามบริบทของแต่ละหน้า
+
+                if (activeBtnId === 'suppliers-tab-btn') {
+
+                    renderSuppliersTable();
+
+                    updateGlobalDashboard(allRecords, 'suppliers');
+
+                }
+
+                else if (activeBtnId === 'products-tab-btn') {
+
+                    renderProductsTable();
+
+                    updateGlobalDashboard(allRecords, 'products');
+
+                }
+
+                else if (activeBtnId === 'transaction-entry-tab-btn') {
+
+                    renderTransactionTable();
+
+                    // หน้าแรก: ส่งข้อมูลทั้งหมดไปคำนวณ (General Ledger)
+
+                    updateGlobalDashboard(allRecords, 'transaction-entry'); 
+
+                }
+
+                else if (activeBtnId === 'summary-tab-btn') {
+
+                    renderSummaryTable(); 
+
+                    // หน้าสรุป: ไม่ต้องเรียก updateGlobalDashboard ตรงนี้ 
+
+                    // เพราะใน renderSummaryTable เราสั่งให้มันเรียกพร้อมข้อมูลที่กรองแล้ว
+
+                }
+
+            };
+
+
+
+            if (passwordProtected) {
+
+                const correctPassword = "1234";
+
+                showInputModal('กรุณาใส่รหัสผ่าน', 'เพื่อเข้าถึงส่วนนี้:', (enteredPassword) => {
+
+                    if (enteredPassword === correctPassword) {
+
+                        showView();
+
+                        closeModal(inputModal);
+
+                    } else {
+
+                        showToast('รหัสผ่านไม่ถูกต้อง', 'รหัสผ่านที่คุณป้อนไม่ถูกต้อง กรุณาลองอีกครั้ง', 'error');
+
+                    }
+
+                });
+
+            } else {
+
+                showView();
+
+            }
+
+        };
+
+
+
+        // --- [V4 FINAL LOGIC] Dashboard คำนวณตามประเภท (Type-Based) ---
+
+        function updateGlobalDashboard(dataSource, context = 'general') {
+
+            // ดึง Element
+
+            const card1 = document.getElementById('dash-card-1');
+
+            const card2 = document.getElementById('dash-card-2');
+
+            const card3 = document.getElementById('dash-card-3');
+
+            
+
+            // Helper: จัดรูปแบบเงิน
+
+            const formatCurrency = (num) => num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+
+
+            // กำหนดข้อมูลที่จะใช้คำนวณ
+
+            // - ถ้าอยู่หน้า "บันทึก" (transaction-entry): บังคับใช้ allRecords (ข้อมูลทั้งหมด) เสมอ เพื่อให้เห็นภาพรวม
+
+            // - ถ้าอยู่หน้า "สรุป" (summary): ใช้ dataSource ที่ส่งมา (ซึ่งผ่านตัวกรองแล้ว)
+
+            let dataToCalc = [];
+
+            if (context === 'transaction-entry') {
+
+                dataToCalc = allRecords || []; 
+
+            } else {
+
+                dataToCalc = dataSource || allRecords || [];
+
+            }
+
+
+
+            let totalInc = 0; // รายรับรวม
+
+            let totalExp = 0; // รายจ่ายรวม
+
+
+
+            dataToCalc.forEach(r => {
+
+                if (!r) return;
+
+
+
+                // 1. ดึงค่า (รองรับคีย์ไทย/อังกฤษ)
+
+                const rawAmount = r['จำนวนเงิน (บาท)'] !== undefined ? r['จำนวนเงิน (บาท)'] : (r['amount'] || 0);
+
+                const rawType = r['ประเภท'] !== undefined ? r['ประเภท'] : (r['type'] || '');
+
+
+
+                // 2. แปลงเป็นตัวเลข
+
+                let amt = 0;
+
+                if (typeof rawAmount === 'number') {
+
+                    amt = rawAmount;
+
+                } else {
+
+                    amt = parseFloat(String(rawAmount).replace(/,/g, '')) || 0;
+
+                }
+
+
+
+                // 3. คำนวณตาม "ประเภท" (Type) เป็นหลัก **ตามเงื่อนไขที่คุณระบุ**
+
+                // ไม่สนใจสถานะ (Status) ในขั้นตอนนี้ เพราะไม่ว่าสถานะไหน เงินก็นับเป็นรายรับหรือรายจ่ายของระบบแล้ว
+
+                if (rawType === 'รายรับ' || rawType === 'income') {
+
+                    totalInc += amt;
+
+                } else if (rawType === 'รายจ่าย' || rawType === 'expense') {
+
+                    totalExp += amt;
+
+                }
+
+            });
+
+
+
+            // 4. คำนวณคงเหลือ
+
+            const net = totalInc - totalExp;
+
+
+
+            // Helper: แสดงผลการ์ด
+
+            const setCard = (cardIndex, title, value, desc, colorTheme, iconClass) => {
+
+                const colors = {
+
+                    green:  { border: 'border-l-green-500', text: 'text-green-600', bg: 'bg-green-50' },
+
+                    red:    { border: 'border-l-red-500',   text: 'text-red-600',   bg: 'bg-red-50' },
+
+                    blue:   { border: 'border-l-blue-500',  text: 'text-blue-600',  bg: 'bg-blue-50' },
+
+                    purple: { border: 'border-l-purple-500',text: 'text-purple-600',bg: 'bg-purple-50' },
+
+                    orange: { border: 'border-l-orange-500',text: 'text-orange-600',bg: 'bg-orange-50' }
+
+                };
+
+                const c = colors[colorTheme] || colors.blue;
+
+                
+
+                const labelEl = document.getElementById(`dash-label-${cardIndex}`);
+
+                if (!labelEl) return; 
+
+
+
+                labelEl.innerText = title;
+
+                const valEl = document.getElementById(`dash-value-${cardIndex}`);
+
+                valEl.innerText = value;
+
+                valEl.className = `text-2xl font-bold mt-1 ${c.text}`;
+
+                document.getElementById(`dash-desc-${cardIndex}`).innerText = desc;
+
+                
+
+                const card = document.getElementById(`dash-card-${cardIndex}`);
+
+                card.className = `summary-card-header border-l-4 ${c.border} bg-white shadow-sm transition-all duration-300`;
+
+                card.style.display = 'block';
+
+
+
+                const iconBg = document.getElementById(`dash-icon-bg-${cardIndex}`);
+
+                iconBg.className = `p-2 rounded-lg ${c.bg} ${c.text}`;
+
+                document.getElementById(`dash-icon-${cardIndex}`).className = iconClass;
+
+            };
+
+
+
+            // 5. แสดงผลแยกตามหน้า (Context)
+
+            if (context === 'transaction-entry') {
+
+                // หน้าบันทึก: แสดงยอดรวมทั้งหมด (All Time)
+
+                setCard(1, 'รายรับรวม (ทั้งหมด)', formatCurrency(totalInc), 'ยอดรายรับทุกสถานะ', 'green', 'fa-solid fa-arrow-trend-up');
+
+                setCard(2, 'รายจ่ายรวม (ทั้งหมด)', formatCurrency(totalExp), 'ยอดรายจ่ายทุกสถานะ', 'red', 'fa-solid fa-arrow-trend-down');
+
+                setCard(3, 'กำไร/ขาดทุน สุทธิ', formatCurrency(net), 'รายรับ - รายจ่าย', 'blue', 'fa-solid fa-scale-balanced');
+
+            
+
+            } else if (context === 'summary') {
+
+                // หน้าสรุป: แสดงยอดตามที่กรองมา (Filtered)
+
+                setCard(1, 'รายรับ (ตามตัวกรอง)', formatCurrency(totalInc), 'ผลรวมรายการที่เลือก', 'green', 'fa-solid fa-filter');
+
+                setCard(2, 'รายจ่าย (ตามตัวกรอง)', formatCurrency(totalExp), 'ผลรวมรายการที่เลือก', 'red', 'fa-solid fa-filter');
+
+                setCard(3, 'คงเหลือ (ตามตัวกรอง)', formatCurrency(net), 'ผลต่างจากรายการที่เลือก', 'blue', 'fa-solid fa-calculator');
+
+
+
+            } else if (context === 'suppliers') {
+
+                setCard(1, 'จำนวนร้านค้า/ผู้ขาย', (allSuppliers ? allSuppliers.length : 0) + ' ราย', 'คู่ค้าทั้งหมดในระบบ', 'purple', 'fa-solid fa-store');
+
+                card2.style.display = 'none';
+
+                card3.style.display = 'none';
+
+
+
+            } else if (context === 'products') {
+
+                const productCount = allProducts ? allProducts.length : 0;
+
+                const categories = allProducts && allProducts.length > 0 ? [...new Set(allProducts.map(p => p['Category']))].filter(Boolean).length : 0;
+
+                setCard(1, 'จำนวนสินค้าทั้งหมด', productCount + ' รายการ', 'สินค้าในฐานข้อมูล', 'orange', 'fa-solid fa-box-open');
+
+                setCard(2, 'หมวดหมู่สินค้า', categories + ' หมวด', 'ประเภทสินค้าทั้งหมด', 'blue', 'fa-solid fa-layer-group');
+
+                card3.style.display = 'none';
+
+            }
+
+        }
+
+
+
+        transactionEntryTabBtn.addEventListener('click', () => switchTab('transaction-entry-tab-btn'));
+
+        summaryTabBtn.addEventListener('click', () => switchTab('summary-tab-btn'));
+
+        suppliersTabBtn.addEventListener('click', () => switchTab('suppliers-tab-btn', true));
+
+        productsTabBtn.addEventListener('click', () => switchTab('products-tab-btn', true));
+
+        
+
+        confirmConfirmBtn.addEventListener('click', () => {
+
+            const onConfirm = onConfirmCallback;
+
+            if (onConfirm) {
+
+                setButtonState(confirmConfirmBtn, 'loading', 'กำลังดำเนินการ...', 'fa-spinner in-button-loader');
+
+                onConfirm();
+
+            }
+
+        });
+
+
+
+        confirmCancelBtn.addEventListener('click', () => {
+
+            closeModal(confirmModal);
+
+        });
+
+
+
+        confirmModal.querySelector('.close-modal-btn').addEventListener('click', () => {
+
+            closeModal(confirmModal);
+
+        });
+
+        
+
+        inputConfirmBtn.addEventListener('click', () => { if (onInputConfirmCallback) onInputConfirmCallback(inputModalField.value); });
+
+        inputCancelBtn.addEventListener('click', () => closeModal(inputModal));
+
+        inputModal.querySelector('.close-modal-btn').addEventListener('click', () => closeModal(inputModal));
+
+
+
+        inputModalField.addEventListener('keypress', (e) => {
+
+            if (e.key === 'Enter') {
+
+                e.preventDefault();
+
+                inputConfirmBtn.click();
+
+            }
+
+        });
+
+
+
+        addSupplierBtn.addEventListener('click', () => openSupplierForm());
+
+        supplierForm.addEventListener('submit', handleSupplierFormSubmit);
+
+        cancelSupplierBtn.addEventListener('click', closeSupplierForm);
+
+        supplierFormModal.querySelector('.close-modal-btn').addEventListener('click', closeSupplierForm);
+
+        supplierFormModal.querySelector('.modal-backdrop').addEventListener('click', closeSupplierForm);
+
+
+
+        addProductBtn.addEventListener('click', () => openProductForm());
+
+        productForm.addEventListener('submit', handleProductFormSubmit);
+
+        cancelProductBtn.addEventListener('click', closeProductForm);
+
+        productFormModal.querySelector('.close-modal-btn').addEventListener('click', closeProductForm);
+
+        productFormModal.querySelector('.modal-backdrop').addEventListener('click', closeProductForm);
+
+
+
+        // --- Event Listeners for Transaction Filters ---
+
+        if (transSearchInput) transSearchInput.addEventListener('input', renderTransactionTable);
+
+        if (transFilterType) transFilterType.addEventListener('change', renderTransactionTable);
+
+        if (transFilterStatus) transFilterStatus.addEventListener('change', renderTransactionTable);
+
+        
+
+        // ใช้ช่องวันที่เดิมในการกรองด้วย
+
+        if (receiptPrintStartDate) receiptPrintStartDate.addEventListener('change', renderTransactionTable);
+
+        if (receiptPrintEndDate) receiptPrintEndDate.addEventListener('change', renderTransactionTable);
+
+
+
+        // ปุ่มรีเซ็ตตัวกรอง
+
+        if (transResetBtn) {
+
+            transResetBtn.addEventListener('click', () => {
+
+                if(transSearchInput) transSearchInput.value = '';
+
+                if(transFilterType) transFilterType.value = 'all';
+
+                if(transFilterStatus) transFilterStatus.value = 'all';
+
+                
+
+                // รีเซ็ตวันที่เป็นวันนี้
+
+                const today = new Date().toISOString().split('T')[0];
+
+                if(receiptPrintStartDate) receiptPrintStartDate.value = today;
+
+                if(receiptPrintEndDate) receiptPrintEndDate.value = today;
+
+                
+
+                renderTransactionTable();
+
+            });
+
+        }
+
+
+
+        initialize();
+
+        
+
+    });
+
+    </script>
+
+</body>
+
+</html>
+
