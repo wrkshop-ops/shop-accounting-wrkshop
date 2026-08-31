@@ -1,9 +1,10 @@
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 /* Supabase adapter for the legacy GAS UI. It preserves the old callback API
    while the data source moves from Google Apps Script to Supabase. */
 (function () {
   const SUPABASE_URL = 'https://htptdhkhoxktvhgicutq.supabase.co';
   const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_1fMc83XXLsy7VaRFAp5FRg_kS9ci6UX';
-  const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+  const client = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
   window.shopSupabase = client;
 
   const fail = (message) => ({ status: 'error', message });
