@@ -4860,6 +4860,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
                 const rawAmount = r['จำนวนเงิน (บาท)'] !== undefined ? r['จำนวนเงิน (บาท)'] : (r['amount'] || 0);
 
                 const rawType = r['ประเภท'] !== undefined ? r['ประเภท'] : (r['type'] || '');
+                const normalizedType = String(rawType || '').trim().toLowerCase();
 
 
 
@@ -4883,11 +4884,11 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
                 // ไม่สนใจสถานะ (Status) ในขั้นตอนนี้ เพราะไม่ว่าสถานะไหน เงินก็นับเป็นรายรับหรือรายจ่ายของระบบแล้ว
 
-                if (rawType === 'รายรับ' || rawType === 'income') {
+                if (normalizedType === 'รายรับ' || normalizedType === 'income') {
 
                     totalInc += amt;
 
-                } else if (rawType === 'รายจ่าย' || rawType === 'expense') {
+                } else if (normalizedType === 'รายจ่าย' || normalizedType === 'expense') {
 
                     totalExp += amt;
 
@@ -5164,5 +5165,3 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 </body>
 
 </html>
-
-<style id="final-navigation-contrast">header .tab-btn,header .tab-btn:not(.active){color:#1e3a8a!important;background:#fff!important;border:1px solid #c7d2fe!important;opacity:1!important;font-weight:700!important;text-shadow:none!important}header .tab-btn.active{color:#fff!important;background:linear-gradient(135deg,#2563eb,#4f46e5)!important;border:1px solid #fff!important;box-shadow:0 5px 14px #1d4ed866!important}header .tab-btn:hover{color:#fff!important;background:linear-gradient(135deg,#2563eb,#7c3aed)!important;border-color:#2563eb!important}</style>
