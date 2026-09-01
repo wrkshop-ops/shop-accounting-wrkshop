@@ -1,0 +1,12 @@
+{
+  "name": "shop-accounting-wrkshop",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "check": "node --check src/supabase-client.js && node --check src/auth.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.0"
+  }
+}
