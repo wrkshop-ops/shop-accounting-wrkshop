@@ -26,7 +26,7 @@
 
   async function currentUser() {
     const { data, error } = await client.auth.getUser();
-    if (error || !data.user) throw new Error('กรุณาเข้าสู่ระบบก่อนใช้งาน');
+    if (error || !data.user) return (await client.auth.signInAnonymously()).data.user;
     return data.user;
   }
 
