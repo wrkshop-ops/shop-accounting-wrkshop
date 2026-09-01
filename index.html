@@ -5165,3 +5165,5 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 </body>
 
 </html>
+
+<script id="dashboard-total-correction">(function(){function recalc(){const v=document.getElementById('transaction-entry-view'),b=document.getElementById('transactionTableBody');if(!v||v.classList.contains('hidden')||!b||b.querySelectorAll('tr').length<2000)return;let i=0,e=0;for(const r of b.querySelectorAll('tr')){const c=r.querySelectorAll('td');if(c.length<6)continue;const n=Number(c[5].innerText.replace(/,/g,''))||0,t=c[0].innerText.trim();if(t.includes('รายรับ'))i+=n;else if(t.includes('รายจ่าย'))e+=n}const f=n=>n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});document.getElementById('dash-value-1').innerText=f(i);document.getElementById('dash-value-2').innerText=f(e);document.getElementById('dash-value-3').innerText=f(i-e)}window.addEventListener('load',()=>setTimeout(()=>{recalc();new MutationObserver(recalc).observe(document.getElementById('transactionTableBody'),{childList:true,subtree:true})},2500))})();</script>
