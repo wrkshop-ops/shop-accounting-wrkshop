@@ -216,7 +216,8 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
       if (nextSession) gate.remove();
     });
   }
-  document.addEventListener('DOMContentLoaded', addLogin);
+  // Access is intentionally link-based for this internal deployment.
+  // Do not block the application behind a provider login gate.
 })();
 </script>
 
@@ -522,7 +523,9 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
             body {
 
-                background-color: white !important;
+                background: #fff !important;
+                background-image: none !important;
+                background-color: #fff !important;
 
                 -webkit-print-color-adjust: exact;
 
@@ -594,7 +597,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
                 width: 297mm; /* A4 Landscape width */
 
-                min-height: 210mm; /* A4 Landscape height */
+                min-height: 0; /* Let the browser paginate by content. */
 
                 page-break-after: auto; /* Allow content to flow across pages */
 
@@ -618,6 +621,8 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
                 width: 100%;
 
+                table-layout: fixed;
+
                 margin-top: 10px;
 
             }
@@ -629,6 +634,10 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
                 padding: 6px 8px;
 
                 text-align: left;
+
+                overflow-wrap: anywhere;
+
+                word-break: break-word;
 
             }
 
@@ -648,6 +657,25 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
             }
 
+            .summary-report-page tr,
+            .summary-report-page .total-row,
+            .summary-report-page .print-signature,
+            .receipt-print-page tr,
+            .receipt-print-page .total-row,
+            .receipt-print-page .print-signature {
+
+                page-break-inside: avoid;
+
+                break-inside: avoid;
+
+            }
+
+            .print-signature {
+
+                margin-top: 1.5rem !important;
+
+            }
+
             /* Print-specific page size for landscape */
 
             @page {
@@ -664,17 +692,17 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
                 width: 297mm; /* A4 Landscape width */
 
-                min-height: 210mm; /* A4 Landscape height */
+                min-height: 0; /* Let the browser paginate by content. */
 
                 page-break-after: auto;
 
                 box-sizing: border-box;
 
-                padding: 1.5cm;
+                padding: 0.8cm;
 
-                font-size: 10pt; /* Slightly smaller font for more content */
+                font-size: 10.5pt; /* Use the page area while keeping the table readable. */
 
-                line-height: 1.5;
+                line-height: 1.4;
 
                 color: #000;
 
@@ -688,6 +716,8 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
                 width: 100%;
 
+                table-layout: fixed;
+
                 margin-top: 10px;
 
             }
@@ -696,9 +726,20 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
                 border: 1px solid #ccc;
 
-                padding: 6px 8px;
+                padding: 4px 5px;
 
                 text-align: left;
+
+                overflow-wrap: anywhere;
+
+                word-break: break-word;
+
+            }
+
+            .receipt-print-page th:first-child,
+            .receipt-print-page td:first-child {
+
+                white-space: nowrap;
 
             }
 
@@ -4517,7 +4558,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
                 <div style="text-align: right; margin-top: 1rem; font-weight: bold;">(${toThaiBaht(netBalance)})</div>
 
-                <div style="margin-top: 3rem; text-align: center;"><p>....................................................</p><p>ผู้จัดทำรายงาน</p></div>
+                <div class="print-signature" style="margin-top: 3rem; text-align: center;"><p>....................................................</p><p>ผู้จัดทำรายงาน</p></div>
 
             </div>`;
 
@@ -4609,23 +4650,23 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
                     <tr>
 
-                        <td style="text-align: center; width: 3%;">${index + 1}</td>
+                        <td style="text-align: center; width: 5%; white-space: nowrap;">${index + 1}</td>
 
-                        <td style="text-align: center; width: 15%; white-space: nowrap;">${formatDisplayDate(record['วันที่'])}</td>
+                        <td style="text-align: center; width: 13%; white-space: nowrap;">${formatDisplayDate(record['วันที่'])}</td>
 
-                        <td style="text-align: center; width: 15%;">${record['ชื่อร้าน'] || ''}</td>
+                        <td style="text-align: center; width: 18%;">${record['ชื่อร้าน'] || ''}</td>
 
-                        <td style="text-align: center; width: 18%;">${record['รายการ'] || ''}</td>
+                        <td style="text-align: center; width: 20%;">${record['รายการ'] || ''}</td>
 
-                        <td style="text-align: right; width: 10%;">${formatCurrency(amount)}</td>
+                        <td style="text-align: right; width: 11%; white-space: nowrap;">${formatCurrency(amount)}</td>
 
-                        <td style="text-align: center; width: 8%;">${record['ผู้รับเงิน'] || ''}</td>
+                        <td style="text-align: center; width: 7%;">${record['ผู้รับเงิน'] || ''}</td>
 
-                        <td style="text-align: center; width: 8%;">${record['ผู้จ่ายเงิน'] || ''}</td>
+                        <td style="text-align: center; width: 7%;">${record['ผู้จ่ายเงิน'] || ''}</td>
 
-                        <td style="text-align: center; width: 15%; white-space: nowrap;">${formatDisplayDate(record['วันที่จ่ายเงิน'])}</td>
+                        <td style="text-align: center; width: 14%; white-space: nowrap;">${formatDisplayDate(record['วันที่จ่ายเงิน'])}</td>
 
-                        <td style="text-align: center; width: 8%;">${record['หมายเหตุ'] || ''}</td>
+                        <td style="text-align: center; width: 5%;">${record['หมายเหตุ'] || ''}</td>
 
                     </tr>
 
@@ -4695,7 +4736,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
                 <div style="text-align: right; margin-top: 1rem; font-weight: bold; font-size: 11pt;">(${toThaiBaht(totalAmount)})</div>
 
-                <div style="margin-top: 3rem; text-align: center;"><p>....................................................</p><p>ผู้จัดทำรายงาน</p></div>
+                <div class="print-signature" style="margin-top: 3rem; text-align: center;"><p>....................................................</p><p>ผู้จัดทำรายงาน</p></div>
 
             </div>`;
 

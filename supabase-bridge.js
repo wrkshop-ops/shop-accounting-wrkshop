@@ -150,5 +150,6 @@
       if (nextSession) gate.remove();
     });
   }
-  document.addEventListener('DOMContentLoaded', addLogin);
+  // Access is intentionally link-based for this internal deployment.
+  // Do not block the application behind a provider login gate.
 })();
