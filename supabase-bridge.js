@@ -49,8 +49,8 @@
       fetchAll(() => client.from('products').select('*').order('product_name'))
     ]);
     const records = tx.map(txToLegacy);
-    const supplierRows = suppliers.map(r => ({ SupplierID: r.supplier_id || r.id, SupplierName: r.supplier_name }));
-    const productRows = products.map(r => ({ ProductID: r.product_id || r.id, ProductName: r.product_name, Category: r.category || '' }));
+    const supplierRows = suppliers.map(r => ({ __rowId: r.id, SupplierID: r.supplier_id || r.id, SupplierName: r.supplier_name }));
+    const productRows = products.map(r => ({ __rowId: r.id, ProductID: r.product_id || r.id, ProductName: r.product_name, Category: r.category || '' }));
     const uniq = (values) => [...new Set(values.filter(Boolean))].sort();
     return {
       status: 'success', records, suppliers: supplierRows, products: productRows,
@@ -75,38 +75,70 @@
         amount: Number(payload.amount) || 0, total: Number(payload.amount) || 0,
         status: payload.status, payment_date: payload.paymentDate || null, note: payload.notes || null
       };
+      const transactionId = name === 'updateTransaction' ? JSON.parse(args[0]).transaction_id : null;
+      if (name === 'updateTransaction' && !transactionId) throw new Error('ไม่พบรหัสรายการสำหรับแก้ไข');
       const result = name === 'updateTransaction'
-        ? await client.from('transactions').update(row).eq('id', JSON.parse(args[0]).transaction_id)
-        : await client.from('transactions').insert(row);
+        ? await client.from('transactions').update(row).eq('id', transactionId).eq('user_id', user.id).select('id')
+        : await client.from('transactions').insert(row).select('id');
       if (result.error) throw result.error;
+      if (name === 'updateTransaction' && (!result.data || result.data.length !== 1)) throw new Error('ไม่พบรายการที่ต้องการแก้ไข หรือรายการถูกแก้ไขไปแล้ว');
       return appData();
     }
     if (name === 'deleteTransaction') {
       const payload = JSON.parse(args[0]);
-      const result = await client.from('transactions').delete().eq('id', payload.transaction_id || payload.id);
+      const transactionId = payload.transaction_id || payload.id;
+      if (!transactionId) throw new Error('ไม่พบรหัสรายการสำหรับลบ');
+      const result = await client.from('transactions').delete().eq('id', transactionId).eq('user_id', user.id).select('id');
       if (result.error) throw result.error;
+      if (!result.data || result.data.length !== 1) throw new Error('ไม่พบรายการที่ต้องการลบ หรือรายการถูกลบไปแล้ว');
       return appData();
     }
     if (name === 'saveSupplier') {
       const p = JSON.parse(args[0]);
-      const result = await client.from('suppliers').upsert({ user_id: user.id, supplier_id: p.SupplierID, supplier_name: p.SupplierName });
+      if (!p.SupplierID || !p.SupplierName) throw new Error('ข้อมูลผู้ขายไม่ครบถ้วน');
+      let result;
+      if (p.row_id) {
+        result = await client.from('suppliers').update({ supplier_id: p.SupplierID, supplier_name: p.SupplierName }).eq('id', p.row_id).eq('user_id', user.id).select('id');
+      } else {
+        const existing = await client.from('suppliers').select('id').eq('user_id', user.id).eq('supplier_id', p.SupplierID).limit(1);
+        if (existing.error) throw existing.error;
+        if (existing.data && existing.data.length) throw new Error(`รหัสผู้ขาย ${p.SupplierID} มีอยู่แล้ว ไม่บันทึกซ้ำ`);
+        result = await client.from('suppliers').insert({ user_id: user.id, supplier_id: p.SupplierID, supplier_name: p.SupplierName }).select('id');
+      }
       if (result.error) throw result.error;
+      if (!result.data || result.data.length !== 1) throw new Error('ไม่พบผู้ขายที่ต้องการแก้ไข หรือข้อมูลถูกเปลี่ยนไปแล้ว');
       return appData();
     }
     if (name === 'deleteSupplier') {
-      const result = await client.from('suppliers').delete().eq('supplier_id', args[0]);
+      const p = typeof args[0] === 'string' ? { row_id: null, SupplierID: args[0] } : JSON.parse(args[0]);
+      if (!p.row_id) throw new Error('การลบผู้ขายต้องอ้างอิงรายการที่เลือกโดยตรง เพื่อป้องกันลบหลายรายการ');
+      const result = await client.from('suppliers').delete().eq('id', p.row_id).eq('user_id', user.id).select('id');
       if (result.error) throw result.error;
+      if (!result.data || result.data.length !== 1) throw new Error('ไม่พบผู้ขายที่ต้องการลบ หรือผู้ขายถูกลบไปแล้ว');
       return appData();
     }
     if (name === 'saveProduct') {
       const p = JSON.parse(args[0]);
-      const result = await client.from('products').upsert({ user_id: user.id, product_id: p.ProductID, product_name: p.ProductName, category: p.Category || null });
+      if (!p.ProductID || !p.ProductName || !p.Category) throw new Error('ข้อมูลสินค้าไม่ครบถ้วน');
+      let result;
+      if (p.row_id) {
+        result = await client.from('products').update({ product_id: p.ProductID, product_name: p.ProductName, category: p.Category }).eq('id', p.row_id).eq('user_id', user.id).select('id');
+      } else {
+        const existing = await client.from('products').select('id').eq('user_id', user.id).eq('product_id', p.ProductID).limit(1);
+        if (existing.error) throw existing.error;
+        if (existing.data && existing.data.length) throw new Error(`รหัสสินค้า ${p.ProductID} มีอยู่แล้ว ไม่บันทึกซ้ำ`);
+        result = await client.from('products').insert({ user_id: user.id, product_id: p.ProductID, product_name: p.ProductName, category: p.Category }).select('id');
+      }
       if (result.error) throw result.error;
+      if (!result.data || result.data.length !== 1) throw new Error('ไม่พบสินค้าที่ต้องการแก้ไข หรือข้อมูลถูกเปลี่ยนไปแล้ว');
       return appData();
     }
     if (name === 'deleteProduct') {
-      const result = await client.from('products').delete().eq('product_id', args[0]);
+      const p = typeof args[0] === 'string' ? { row_id: null, ProductID: args[0] } : JSON.parse(args[0]);
+      if (!p.row_id) throw new Error('การลบสินค้าต้องอ้างอิงรายการที่เลือกโดยตรง เพื่อป้องกันลบหลายรายการ');
+      const result = await client.from('products').delete().eq('id', p.row_id).eq('user_id', user.id).select('id');
       if (result.error) throw result.error;
+      if (!result.data || result.data.length !== 1) throw new Error('ไม่พบสินค้าที่ต้องการลบ หรือสินค้าถูกลบไปแล้ว');
       return appData();
     }
     throw new Error(`ไม่รองรับฟังก์ชัน ${name}`);
