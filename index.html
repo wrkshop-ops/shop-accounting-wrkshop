@@ -247,8 +247,21 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
       if (review.error) throw review.error;
       if (!review.data || review.data.length !== 1) throw new Error('คำขอนี้ถูกดำเนินการไปแล้ว');
       if (p.status === 'approved') {
-        const member = await client.from('workspace_members').upsert({ workspace_id: workspaceId, user_id: request.data.user_id, email: request.data.email, display_name: request.data.display_name, role: 'member', status: 'active' }, { onConflict: 'workspace_id,email' }).select('id');
-        if (member.error) throw member.error;
+        // Repair an existing exact-user row first. This prevents a stale
+        // UUID/fallback-email member from colliding with the user unique index.
+        const repaired = await client.from('workspace_members')
+          .update({ email: request.data.email, display_name: request.data.display_name, role: 'member', status: 'active', updated_at: new Date().toISOString() })
+          .eq('workspace_id', workspaceId)
+          .eq('user_id', request.data.user_id)
+          .select('id');
+        if (repaired.error) throw repaired.error;
+        if (!repaired.data || repaired.data.length === 0) {
+          const member = await client.from('workspace_members').upsert({ workspace_id: workspaceId, user_id: request.data.user_id, email: request.data.email, display_name: request.data.display_name, role: 'member', status: 'active' }, { onConflict: 'workspace_id,email' }).select('id');
+          if (member.error) throw member.error;
+          if (!member.data || member.data.length !== 1) throw new Error('ไม่สามารถเพิ่มสมาชิกจากคำขอได้');
+        } else if (repaired.data.length !== 1) {
+          throw new Error('พบข้อมูลสมาชิกซ้ำ ไม่ดำเนินการอนุมัติเพื่อป้องกันข้อมูลบัญชีผิดพลาด');
+        }
       }
       return { ...(await appData()), message: p.status === 'approved' ? 'อนุมัติคำขอสำเร็จ' : 'ปฏิเสธคำขอสำเร็จ' };
     }
