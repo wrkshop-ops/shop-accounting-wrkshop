@@ -125,9 +125,11 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
       }
     }
     const [tx, suppliers, products] = await Promise.all([
-      fetchAll(() => client.from('transactions').select('id,workspace_id,transaction_type,transaction_date,store_name,category,item_name,amount,total,status,payment_date,note,balance,legacy_transaction_id,created_by,updated_by,updated_at').eq('workspace_id', workspaceId).order('transaction_date', { ascending: false })),
-      fetchAll(() => client.from('suppliers').select('id,workspace_id,supplier_id,supplier_name').eq('workspace_id', workspaceId).order('supplier_name')),
-      fetchAll(() => client.from('products').select('id,workspace_id,product_id,product_name,category').eq('workspace_id', workspaceId).order('product_name'))
+      // Always add the unique id as a tie-breaker. Offset pagination over a
+      // non-unique date/name sort can duplicate or skip rows between pages.
+      fetchAll(() => client.from('transactions').select('id,workspace_id,transaction_type,transaction_date,store_name,category,item_name,amount,total,status,payment_date,note,balance,legacy_transaction_id,created_by,updated_by,updated_at').eq('workspace_id', workspaceId).order('transaction_date', { ascending: false }).order('id', { ascending: false })),
+      fetchAll(() => client.from('suppliers').select('id,workspace_id,supplier_id,supplier_name').eq('workspace_id', workspaceId).order('supplier_name').order('id', { ascending: false })),
+      fetchAll(() => client.from('products').select('id,workspace_id,product_id,product_name,category').eq('workspace_id', workspaceId).order('product_name').order('id', { ascending: false }))
     ]);
     const records = tx.map(txToLegacy);
     const supplierRows = suppliers.map(r => ({ __rowId: r.id, SupplierID: r.supplier_id || r.id, SupplierName: r.supplier_name }));
