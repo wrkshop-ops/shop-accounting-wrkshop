@@ -98,8 +98,21 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     throw new Error('กรุณาเข้าสู่ระบบด้วย Google ก่อนใช้งาน');
   }
 
+  async function currentWorkspace(user) {
+    const result = await client.from('workspace_members')
+      .select('workspace_id')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .limit(1)
+      .maybeSingle();
+    if (result.error) throw result.error;
+    if (!result.data?.workspace_id) throw new Error('บัญชีนี้ยังไม่ได้รับสิทธิ์เข้า Workspace ของระบบ');
+    return result.data.workspace_id;
+  }
+
   async function appData() {
     const user = await currentUser();
+    const workspaceId = await currentWorkspace(user);
     // PostgREST returns at most 1,000 rows by default. Fetch in pages so the
     // dashboard and table always use the complete migrated dataset.
     async function fetchAll(queryFactory, pageSize = 1000) {
@@ -112,16 +125,16 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
       }
     }
     const [tx, suppliers, products] = await Promise.all([
-      fetchAll(() => client.from('transactions').select('id,transaction_type,transaction_date,store_name,category,item_name,amount,total,status,payment_date,note,balance,legacy_transaction_id').order('transaction_date', { ascending: false })),
-      fetchAll(() => client.from('suppliers').select('id,supplier_id,supplier_name').order('supplier_name')),
-      fetchAll(() => client.from('products').select('id,product_id,product_name,category').order('product_name'))
+      fetchAll(() => client.from('transactions').select('id,workspace_id,transaction_type,transaction_date,store_name,category,item_name,amount,total,status,payment_date,note,balance,legacy_transaction_id,created_by,updated_by,updated_at').eq('workspace_id', workspaceId).order('transaction_date', { ascending: false })),
+      fetchAll(() => client.from('suppliers').select('id,workspace_id,supplier_id,supplier_name').eq('workspace_id', workspaceId).order('supplier_name')),
+      fetchAll(() => client.from('products').select('id,workspace_id,product_id,product_name,category').eq('workspace_id', workspaceId).order('product_name'))
     ]);
     const records = tx.map(txToLegacy);
     const supplierRows = suppliers.map(r => ({ __rowId: r.id, SupplierID: r.supplier_id || r.id, SupplierName: r.supplier_name }));
     const productRows = products.map(r => ({ __rowId: r.id, ProductID: r.product_id || r.id, ProductName: r.product_name, Category: r.category || '' }));
     const uniq = (values) => [...new Set(values.filter(Boolean))].sort();
     return {
-      status: 'success', records, suppliers: supplierRows, products: productRows,
+      status: 'success', message: 'โหลดข้อมูลสำเร็จ', workspaceId, records, suppliers: supplierRows, products: productRows,
       dropdownData: {
         types: uniq(['รายรับ', 'รายจ่าย', ...records.map(r => r['ประเภท'])]),
         shopNames: uniq([...supplierRows.map(r => r.SupplierName), ...records.map(r => r['ชื่อร้าน'])]),
@@ -141,7 +154,8 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
         transaction_type: payload.type, transaction_date: payload.date,
         store_name: payload.shopName, category: payload.category, item_name: payload.item,
         amount: Number(payload.amount) || 0, total: Number(payload.amount) || 0,
-        status: payload.status, payment_date: payload.paymentDate || null, note: payload.notes || null
+        status: payload.status, payment_date: payload.paymentDate || null, note: payload.notes || null,
+        updated_by: user.id
       };
       const transactionId = name === 'updateTransaction'
         ? normalizeId(JSON.parse(args[0]).transaction_id || JSON.parse(args[0]).id)
@@ -151,10 +165,10 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
         // RLS is the authorization boundary. Duplicating user_id here made
         // stale/changed sessions look like missing rows and obscured the cause.
         ? await client.from('transactions').update(row).eq('id', transactionId).select('id')
-        : await client.from('transactions').insert({ ...row, user_id: user.id }).select('id');
+        : await client.from('transactions').insert({ ...row, user_id: user.id, workspace_id: await currentWorkspace(user), created_by: user.id }).select('id');
       if (result.error) throw result.error;
       if (name === 'updateTransaction' && (!result.data || result.data.length !== 1)) throw new Error('ไม่พบรายการที่ต้องการแก้ไขในเซสชันนี้ รายการอาจถูกลบหรือเปิดจากเซสชัน/เครื่องอื่น');
-      return appData();
+      return { ...(await appData()), message: name === 'updateTransaction' ? 'แก้ไขรายการสำเร็จ' : 'บันทึกรายการสำเร็จ' };
     }
     if (name === 'deleteTransaction') {
       const payload = JSON.parse(args[0]);
@@ -163,7 +177,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
       const result = await client.from('transactions').delete().eq('id', transactionId).select('id');
       if (result.error) throw result.error;
       if (!result.data || result.data.length !== 1) throw new Error('ไม่พบรายการที่ต้องการลบในเซสชันนี้ รายการอาจถูกลบหรือเปิดจากเซสชัน/เครื่องอื่น');
-      return appData();
+      return { ...(await appData()), message: 'ลบรายการสำเร็จ' };
     }
     if (name === 'saveSupplier') {
       const p = JSON.parse(args[0]);
@@ -175,11 +189,11 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
         const existing = await client.from('suppliers').select('id').eq('user_id', user.id).eq('supplier_id', p.SupplierID).limit(1);
         if (existing.error) throw existing.error;
         if (existing.data && existing.data.length) throw new Error(`รหัสผู้ขาย ${p.SupplierID} มีอยู่แล้ว ไม่บันทึกซ้ำ`);
-        result = await client.from('suppliers').insert({ user_id: user.id, supplier_id: p.SupplierID, supplier_name: p.SupplierName }).select('id');
+        result = await client.from('suppliers').insert({ user_id: user.id, workspace_id: await currentWorkspace(user), supplier_id: p.SupplierID, supplier_name: p.SupplierName }).select('id');
       }
       if (result.error) throw result.error;
       if (!result.data || result.data.length !== 1) throw new Error('ไม่พบผู้ขายที่ต้องการแก้ไข หรือข้อมูลถูกเปลี่ยนไปแล้ว');
-      return appData();
+      return { ...(await appData()), message: p.row_id ? 'แก้ไขผู้ขายสำเร็จ' : 'บันทึกผู้ขายสำเร็จ' };
     }
     if (name === 'deleteSupplier') {
       const p = typeof args[0] === 'string' ? { row_id: null, SupplierID: args[0] } : JSON.parse(args[0]);
@@ -187,7 +201,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
       const result = await client.from('suppliers').delete().eq('id', normalizeId(p.row_id)).select('id');
       if (result.error) throw result.error;
       if (!result.data || result.data.length !== 1) throw new Error('ไม่พบผู้ขายที่ต้องการลบ หรือผู้ขายถูกลบไปแล้ว');
-      return appData();
+      return { ...(await appData()), message: 'ลบผู้ขายสำเร็จ' };
     }
     if (name === 'saveProduct') {
       const p = JSON.parse(args[0]);
@@ -199,11 +213,11 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
         const existing = await client.from('products').select('id').eq('user_id', user.id).eq('product_id', p.ProductID).limit(1);
         if (existing.error) throw existing.error;
         if (existing.data && existing.data.length) throw new Error(`รหัสสินค้า ${p.ProductID} มีอยู่แล้ว ไม่บันทึกซ้ำ`);
-        result = await client.from('products').insert({ user_id: user.id, product_id: p.ProductID, product_name: p.ProductName, category: p.Category }).select('id');
+        result = await client.from('products').insert({ user_id: user.id, workspace_id: await currentWorkspace(user), product_id: p.ProductID, product_name: p.ProductName, category: p.Category }).select('id');
       }
       if (result.error) throw result.error;
       if (!result.data || result.data.length !== 1) throw new Error('ไม่พบสินค้าที่ต้องการแก้ไข หรือข้อมูลถูกเปลี่ยนไปแล้ว');
-      return appData();
+      return { ...(await appData()), message: p.row_id ? 'แก้ไขสินค้าสำเร็จ' : 'บันทึกสินค้าสำเร็จ' };
     }
     if (name === 'deleteProduct') {
       const p = typeof args[0] === 'string' ? { row_id: null, ProductID: args[0] } : JSON.parse(args[0]);
@@ -211,7 +225,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
       const result = await client.from('products').delete().eq('id', normalizeId(p.row_id)).select('id');
       if (result.error) throw result.error;
       if (!result.data || result.data.length !== 1) throw new Error('ไม่พบสินค้าที่ต้องการลบ หรือสินค้าถูกลบไปแล้ว');
-      return appData();
+      return { ...(await appData()), message: 'ลบสินค้าสำเร็จ' };
     }
     throw new Error(`ไม่รองรับฟังก์ชัน ${name}`);
   }
@@ -2258,7 +2272,10 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
         
 
-        const showToast = (title, message, type = 'success') => {
+        const showToast = (title, message = '', type = 'success') => {
+            const safeMessage = message === undefined || message === null || message === ''
+                ? (type === 'success' ? 'ดำเนินการสำเร็จ' : 'เกิดข้อผิดพลาดที่ไม่ทราบรายละเอียด')
+                : String(message);
 
             const toastId = 'toast-' + Date.now();
 
@@ -2292,7 +2309,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
                     <p class="toast-title">${title}</p>
 
-                    <p class="toast-message">${message}</p>
+                    <p class="toast-message">${safeMessage}</p>
 
                 </div>
 
@@ -3731,7 +3748,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
             } else {
 
-                showToast('สำเร็จ', data.message, 'success');
+                showToast('สำเร็จ', data.message || (originalRecord ? 'แก้ไขรายการสำเร็จ' : 'บันทึกรายการสำเร็จ'), 'success');
 
                 allRecords = data.records;
 
