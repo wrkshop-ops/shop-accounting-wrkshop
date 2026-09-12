@@ -131,12 +131,19 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
       fetchAll(() => client.from('suppliers').select('id,workspace_id,supplier_id,supplier_name').eq('workspace_id', workspaceId).order('supplier_name').order('id', { ascending: false })),
       fetchAll(() => client.from('products').select('id,workspace_id,product_id,product_name,category').eq('workspace_id', workspaceId).order('product_name').order('id', { ascending: false }))
     ]);
+    const membersResult = await client.from('workspace_members')
+      .select('id,user_id,email,display_name,role,status,updated_at')
+      .eq('workspace_id', workspaceId)
+      .order('email');
+    if (membersResult.error) throw membersResult.error;
     const records = tx.map(txToLegacy);
     const supplierRows = suppliers.map(r => ({ __rowId: r.id, SupplierID: r.supplier_id || r.id, SupplierName: r.supplier_name }));
     const productRows = products.map(r => ({ __rowId: r.id, ProductID: r.product_id || r.id, ProductName: r.product_name, Category: r.category || '' }));
     const uniq = (values) => [...new Set(values.filter(Boolean))].sort();
     return {
-      status: 'success', message: 'โหลดข้อมูลสำเร็จ', workspaceId, records, suppliers: supplierRows, products: productRows,
+      status: 'success', message: 'โหลดข้อมูลสำเร็จ', workspaceId,
+      isWorkspaceAdmin: membersResult.data?.some(m => m.user_id === user.id && m.role === 'admin' && m.status === 'active') === true,
+      members: membersResult.data || [], records, suppliers: supplierRows, products: productRows,
       dropdownData: {
         types: uniq(['รายรับ', 'รายจ่าย', ...records.map(r => r['ประเภท'])]),
         shopNames: uniq([...supplierRows.map(r => r.SupplierName), ...records.map(r => r['ชื่อร้าน'])]),
@@ -181,6 +188,31 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
       if (!result.data || result.data.length !== 1) throw new Error('ไม่พบรายการที่ต้องการลบในเซสชันนี้ รายการอาจถูกลบหรือเปิดจากเซสชัน/เครื่องอื่น');
       return { ...(await appData()), message: 'ลบรายการสำเร็จ' };
     }
+    if (name === 'inviteWorkspaceMember') {
+      const p = JSON.parse(args[0]);
+      const email = String(p.email || '').trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('กรุณากรอกอีเมลให้ถูกต้อง');
+      const workspaceId = await currentWorkspace(user);
+      const result = await client.from('workspace_members').insert({
+        workspace_id: workspaceId, email, display_name: email.split('@')[0], role: 'member', status: 'invited'
+      }).select('id');
+      if (result.error) throw result.error;
+      return { ...(await appData()), message: 'เพิ่มสมาชิกสำเร็จ รอผู้ใช้เข้าสู่ระบบด้วยอีเมลนี้' };
+    }
+    if (name === 'setWorkspaceMemberStatus') {
+      const p = JSON.parse(args[0]);
+      const memberId = normalizeId(p.member_id);
+      if (!memberId || !['active', 'suspended'].includes(p.status)) throw new Error('ข้อมูลสถานะสมาชิกไม่ถูกต้อง');
+      const workspaceId = await currentWorkspace(user);
+      const target = await client.from('workspace_members').select('id,user_id').eq('id', memberId).eq('workspace_id', workspaceId).maybeSingle();
+      if (target.error) throw target.error;
+      if (!target.data) throw new Error('ไม่พบสมาชิกที่ต้องการเปลี่ยนสถานะ');
+      if (target.data.user_id === user.id && p.status !== 'active') throw new Error('ไม่สามารถระงับบัญชีแอดมินของตนเองได้');
+      const result = await client.from('workspace_members').update({ status: p.status }).eq('id', memberId).eq('workspace_id', workspaceId).select('id');
+      if (result.error) throw result.error;
+      if (!result.data || result.data.length !== 1) throw new Error('ไม่สามารถเปลี่ยนสถานะสมาชิกได้');
+      return { ...(await appData()), message: p.status === 'active' ? 'เปิดใช้งานสมาชิกสำเร็จ' : 'ระงับสมาชิกสำเร็จ' };
+    }
     if (name === 'saveSupplier') {
       const p = JSON.parse(args[0]);
       if (!p.SupplierID || !p.SupplierName) throw new Error('ข้อมูลผู้ขายไม่ครบถ้วน');
@@ -188,7 +220,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
       if (p.row_id) {
         result = await client.from('suppliers').update({ supplier_id: p.SupplierID, supplier_name: p.SupplierName }).eq('id', normalizeId(p.row_id)).select('id');
       } else {
-        const existing = await client.from('suppliers').select('id').eq('user_id', user.id).eq('supplier_id', p.SupplierID).limit(1);
+        const existing = await client.from('suppliers').select('id').eq('workspace_id', await currentWorkspace(user)).eq('supplier_id', p.SupplierID).limit(1);
         if (existing.error) throw existing.error;
         if (existing.data && existing.data.length) throw new Error(`รหัสผู้ขาย ${p.SupplierID} มีอยู่แล้ว ไม่บันทึกซ้ำ`);
         result = await client.from('suppliers').insert({ user_id: user.id, workspace_id: await currentWorkspace(user), supplier_id: p.SupplierID, supplier_name: p.SupplierName }).select('id');
@@ -212,7 +244,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
       if (p.row_id) {
         result = await client.from('products').update({ product_id: p.ProductID, product_name: p.ProductName, category: p.Category }).eq('id', normalizeId(p.row_id)).select('id');
       } else {
-        const existing = await client.from('products').select('id').eq('user_id', user.id).eq('product_id', p.ProductID).limit(1);
+        const existing = await client.from('products').select('id').eq('workspace_id', await currentWorkspace(user)).eq('product_id', p.ProductID).limit(1);
         if (existing.error) throw existing.error;
         if (existing.data && existing.data.length) throw new Error(`รหัสสินค้า ${p.ProductID} มีอยู่แล้ว ไม่บันทึกซ้ำ`);
         result = await client.from('products').insert({ user_id: user.id, workspace_id: await currentWorkspace(user), product_id: p.ProductID, product_name: p.ProductName, category: p.Category }).select('id');
@@ -1116,6 +1148,10 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
                 </button>
 
+                <button id="settings-tab-btn" class="tab-btn btn btn-sm px-6 py-2" data-original-text="ตั้งค่า/ผู้ใช้" data-original-icon="fa-solid fa-gear">
+                    <i class="fa-solid fa-gear"></i><span>ตั้งค่า/ผู้ใช้</span>
+                </button>
+
             </div>
 
         </header>
@@ -1500,6 +1536,39 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
                 </div>
 
+            </div>
+
+            <!-- View: Shared Workspace Settings -->
+            <div id="settings-view" class="view-panel hidden opacity-0">
+                <div class="card">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                        <div>
+                            <h2 class="text-2xl font-bold text-slate-800">ตั้งค่า/จัดการผู้ใช้</h2>
+                            <p class="text-sm text-slate-500 mt-1">สมาชิกทุกคนใช้ข้อมูลจาก Workspace เดียวกัน</p>
+                        </div>
+                    </div>
+                    <div id="workspace-admin-panel" class="hidden mb-6 p-4 rounded-xl bg-blue-50 border border-blue-100">
+                        <label for="workspaceInviteEmail" class="block text-sm font-medium text-slate-700 mb-2">เพิ่มอีเมลสมาชิกภายใน</label>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <input id="workspaceInviteEmail" type="email" class="form-input flex-1" placeholder="name@example.com">
+                            <button id="workspaceInviteBtn" class="btn btn-primary"><i class="fa-solid fa-user-plus"></i><span>เพิ่มสมาชิก</span></button>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-2">ผู้ใช้ต้องเข้าสู่ระบบ Google ด้วยอีเมลนี้ ระบบจึงจะเปิดสิทธิ์ใช้งาน</p>
+                    </div>
+                    <div id="workspaceMembersPlaceholder" class="text-center p-10 text-slate-500 hidden">ไม่พบข้อมูลสมาชิก</div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-slate-100 text-slate-600 text-xs"><tr>
+                                <th class="p-4 text-left">อีเมล</th>
+                                <th class="p-4 text-left">ชื่อ</th>
+                                <th class="p-4 text-left">บทบาท</th>
+                                <th class="p-4 text-left">สถานะ</th>
+                                <th class="p-4 text-center">จัดการ</th>
+                            </tr></thead>
+                            <tbody id="workspaceMembersTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
         </div>
@@ -1930,6 +1999,9 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
         let allProducts = []; // All products from the Products sheet
 
+        let workspaceMembers = [];
+        let isWorkspaceAdmin = false;
+
         let dropdownOptions = { // Data for dropdowns/datalists
 
             types: [], shopNames: [], categories: [], items: [], statuses: []
@@ -1963,6 +2035,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
         const suppliersTabBtn = document.getElementById('suppliers-tab-btn');
 
         const productsTabBtn = document.getElementById('products-tab-btn');
+        const settingsTabBtn = document.getElementById('settings-tab-btn');
 
 
 
@@ -1973,6 +2046,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
         const suppliersView = document.getElementById('suppliers-view');
 
         const productsView = document.getElementById('products-view');
+        const settingsView = document.getElementById('settings-view');
 
 
 
@@ -2732,6 +2806,8 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
                     allSuppliers = data.suppliers || [];
 
                     allProducts = data.products || [];
+                    workspaceMembers = data.members || [];
+                    isWorkspaceAdmin = data.isWorkspaceAdmin === true;
 
                     dropdownOptions = data.dropdownData;
 
@@ -4925,6 +5001,61 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
 
 
+        function escapeWorkspaceText(value) {
+            return String(value ?? '').replace(/[&<>"']/g, character => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[character]));
+        }
+
+        function renderWorkspaceMembers() {
+            const panel = document.getElementById('workspace-admin-panel');
+            const body = document.getElementById('workspaceMembersTableBody');
+            const placeholder = document.getElementById('workspaceMembersPlaceholder');
+            if (!panel || !body || !placeholder) return;
+            panel.classList.toggle('hidden', !isWorkspaceAdmin);
+            body.innerHTML = '';
+            placeholder.classList.toggle('hidden', workspaceMembers.length > 0);
+            workspaceMembers.forEach(member => {
+                const row = document.createElement('tr');
+                row.className = 'border-b border-slate-100';
+                const statusLabel = member.status === 'active' ? 'ใช้งาน' : (member.status === 'invited' ? 'รอเข้าสู่ระบบ' : 'ระงับ');
+                const action = isWorkspaceAdmin && member.role !== 'admin'
+                    ? `<button class="member-status-btn btn btn-sm ${member.status === 'active' ? 'btn-secondary' : 'btn-primary'}" data-member-id="${escapeWorkspaceText(member.id)}" data-next-status="${member.status === 'active' ? 'suspended' : 'active'}">${member.status === 'active' ? 'ระงับ' : 'เปิดใช้งาน'}</button>`
+                    : '<span class="text-xs text-slate-400">แอดมิน</span>';
+                row.innerHTML = `<td class="p-4 font-medium text-slate-800">${escapeWorkspaceText(member.email)}</td><td class="p-4">${escapeWorkspaceText(member.display_name || '-')}</td><td class="p-4">${member.role === 'admin' ? 'แอดมิน' : 'สมาชิก'}</td><td class="p-4">${statusLabel}</td><td class="p-4 text-center">${action}</td>`;
+                const button = row.querySelector('.member-status-btn');
+                if (button) button.addEventListener('click', () => {
+                    const nextStatus = button.dataset.nextStatus;
+                    showConfirmModal(nextStatus === 'active' ? 'ยืนยันการเปิดใช้งาน' : 'ยืนยันการระงับสมาชิก', `${nextStatus === 'active' ? 'เปิดใช้งาน' : 'ระงับ'} ${member.email} หรือไม่?`, () => {
+                        google.script.run.withSuccessHandler(response => {
+                            const data = JSON.parse(response);
+                            if (data.status === 'error') return handleFailure(new Error(data.message));
+                            workspaceMembers = data.members || [];
+                            isWorkspaceAdmin = data.isWorkspaceAdmin === true;
+                            renderWorkspaceMembers();
+                            showToast('สำเร็จ', data.message, 'success');
+                        }).withFailureHandler(handleFailure).setWorkspaceMemberStatus(JSON.stringify({ member_id: member.id, status: nextStatus }));
+                    }, 'fa-user-shield');
+                });
+                body.appendChild(row);
+            });
+        }
+
+        document.getElementById('workspaceInviteBtn')?.addEventListener('click', () => {
+            const input = document.getElementById('workspaceInviteEmail');
+            const email = input?.value.trim();
+            if (!email) return showToast('ข้อมูลไม่ครบถ้วน', 'กรุณากรอกอีเมลสมาชิก', 'error');
+            google.script.run.withSuccessHandler(response => {
+                const data = JSON.parse(response);
+                if (data.status === 'error') return handleFailure(new Error(data.message));
+                workspaceMembers = data.members || [];
+                isWorkspaceAdmin = data.isWorkspaceAdmin === true;
+                input.value = '';
+                renderWorkspaceMembers();
+                showToast('สำเร็จ', data.message, 'success');
+            }).withFailureHandler(handleFailure).inviteWorkspaceMember(JSON.stringify({ email }));
+        });
+
         const tabs = {
 
             'transaction-entry-tab-btn': transactionEntryView, 
@@ -4933,7 +5064,8 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
             'suppliers-tab-btn': suppliersView,
 
-            'products-tab-btn': productsView
+            'products-tab-btn': productsView,
+            'settings-tab-btn': settingsView
 
         };
 
@@ -5009,6 +5141,10 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
                     // เพราะใน renderSummaryTable เราสั่งให้มันเรียกพร้อมข้อมูลที่กรองแล้ว
 
+                }
+                else if (activeBtnId === 'settings-tab-btn') {
+                    renderWorkspaceMembers();
+                    updateGlobalDashboard(allRecords, 'transaction-entry');
                 }
 
             };
@@ -5265,6 +5401,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
         suppliersTabBtn.addEventListener('click', () => switchTab('suppliers-tab-btn', true));
 
         productsTabBtn.addEventListener('click', () => switchTab('products-tab-btn', true));
+        settingsTabBtn.addEventListener('click', () => switchTab('settings-tab-btn'));
 
         
 
