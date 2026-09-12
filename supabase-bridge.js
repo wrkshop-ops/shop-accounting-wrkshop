@@ -28,7 +28,7 @@
   async function currentUser() {
     const { data: sessionData, error: sessionError } = await client.auth.getSession();
     if (sessionError) throw sessionError;
-    if (sessionData.session?.user) return sessionData.session.user;
+    if (sessionData.session?.user && !sessionData.session.user.is_anonymous) return sessionData.session.user;
     throw new Error('กรุณาเข้าสู่ระบบด้วย Google ก่อนใช้งาน');
   }
 

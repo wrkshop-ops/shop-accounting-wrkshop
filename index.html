@@ -94,7 +94,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
   async function currentUser() {
     const { data: sessionData, error: sessionError } = await client.auth.getSession();
     if (sessionError) throw sessionError;
-    if (sessionData.session?.user) return sessionData.session.user;
+    if (sessionData.session?.user && !sessionData.session.user.is_anonymous) return sessionData.session.user;
     throw new Error('กรุณาเข้าสู่ระบบด้วย Google ก่อนใช้งาน');
   }
 
@@ -240,7 +240,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
   async function addLogin() {
     const { data: { session } } = await client.auth.getSession();
-    if (session) return;
+    if (session && !session.user?.is_anonymous) return;
     if (document.getElementById('supabase-login-gate')) return;
     const gate = document.createElement('div');
     gate.id = 'supabase-login-gate';
