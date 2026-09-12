@@ -5252,6 +5252,21 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
                 else if (activeBtnId === 'settings-tab-btn') {
                     renderWorkspaceMembers();
                     updateGlobalDashboard(allRecords, 'transaction-entry');
+                    // Re-fetch admin/member/audit data whenever this tab opens.
+                    // The transaction list can change in another tab/device, so
+                    // rendering the initial snapshot here would hide new audit rows.
+                    google.script.run
+                        .withSuccessHandler(response => {
+                            const data = JSON.parse(response);
+                            if (data.status === 'error') return handleFailure(new Error(data.message));
+                            workspaceMembers = data.members || [];
+                            isWorkspaceAdmin = data.isWorkspaceAdmin === true;
+                            workspaceAccessRequests = data.accessRequests || [];
+                            transactionAuditLog = data.auditLog || [];
+                            renderWorkspaceMembers();
+                        })
+                        .withFailureHandler(handleFailure)
+                        .getUpdatedAppData();
                 }
 
             };
