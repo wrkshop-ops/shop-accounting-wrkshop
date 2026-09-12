@@ -24,10 +24,18 @@
     'คอลัมน์ 1': row.legacy_transaction_id || row.id
   });
 
+  let userPromise = null;
   async function currentUser() {
-    const { data, error } = await client.auth.getUser();
-    if (error || !data.user) return (await client.auth.signInAnonymously()).data.user;
-    return data.user;
+    const { data: sessionData, error: sessionError } = await client.auth.getSession();
+    if (sessionError) throw sessionError;
+    if (sessionData.session?.user) return sessionData.session.user;
+    if (!userPromise) {
+      userPromise = client.auth.signInAnonymously().then(({ data, error }) => {
+        if (error || !data.user) throw (error || new Error('ไม่สามารถสร้างเซสชันสำหรับเข้าใช้งานได้'));
+        return data.user;
+      }).finally(() => { userPromise = null; });
+    }
+    return userPromise;
   }
 
   async function appData() {

@@ -90,10 +90,18 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     'คอลัมน์ 1': row.legacy_transaction_id || row.id
   });
 
+  let userPromise = null;
   async function currentUser() {
-    const { data, error } = await client.auth.getUser();
-    if (error || !data.user) return (await client.auth.signInAnonymously()).data.user;
-    return data.user;
+    const { data: sessionData, error: sessionError } = await client.auth.getSession();
+    if (sessionError) throw sessionError;
+    if (sessionData.session?.user) return sessionData.session.user;
+    if (!userPromise) {
+      userPromise = client.auth.signInAnonymously().then(({ data, error }) => {
+        if (error || !data.user) throw (error || new Error('ไม่สามารถสร้างเซสชันสำหรับเข้าใช้งานได้'));
+        return data.user;
+      }).finally(() => { userPromise = null; });
+    }
+    return userPromise;
   }
 
   async function appData() {
@@ -989,6 +997,25 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
       }
       @media (max-width:480px) {
         header > div:first-child h1 { font-size:1rem !important; }
+      }
+    </style>
+    <style id="navigation-surface-fix">
+      /* Keep the navigation as one continuous, uniform pill. */
+      header > div:last-child {
+        display:flex !important; align-items:center; gap:4px !important;
+        padding:4px !important; border-radius:9999px !important;
+        overflow:hidden !important; background:#f8fafc !important;
+        border:1px solid #dbe4f0 !important;
+        box-shadow:0 2px 8px rgba(15,23,42,.06) !important;
+      }
+      header .tab-btn, header .tab-btn:not(.active), header .tab-btn.active,
+      header .tab-btn:hover {
+        border-radius:9999px !important; border-width:1px !important;
+        transform:none !important;
+      }
+      header .tab-btn { min-height:42px; }
+      @media (max-width:768px) {
+        header > div:last-child { border-radius:16px !important; overflow-x:auto !important; }
       }
     </style>
 
