@@ -91,18 +91,11 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     'คอลัมน์ 1': row.legacy_transaction_id || row.id
   });
 
-  let userPromise = null;
   async function currentUser() {
     const { data: sessionData, error: sessionError } = await client.auth.getSession();
     if (sessionError) throw sessionError;
     if (sessionData.session?.user) return sessionData.session.user;
-    if (!userPromise) {
-      userPromise = client.auth.signInAnonymously().then(({ data, error }) => {
-        if (error || !data.user) throw (error || new Error('ไม่สามารถสร้างเซสชันสำหรับเข้าใช้งานได้'));
-        return data.user;
-      }).finally(() => { userPromise = null; });
-    }
-    return userPromise;
+    throw new Error('กรุณาเข้าสู่ระบบด้วย Google ก่อนใช้งาน');
   }
 
   async function appData() {
@@ -252,17 +245,18 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     const gate = document.createElement('div');
     gate.id = 'supabase-login-gate';
     gate.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.72);z-index:99999;display:flex;align-items:center;justify-content:center;font-family:Sarabun,sans-serif';
-    gate.innerHTML = '<div style="background:#fff;border-radius:16px;padding:28px;max-width:360px;width:calc(100% - 32px);text-align:center;box-shadow:0 20px 60px #0004"><h2>เข้าสู่ระบบร้านค้า</h2><p>เลือกบัญชีสำหรับเข้าใช้งาน</p><button id="login-google" class="btn btn-primary" style="width:100%;margin:6px 0">เข้าสู่ระบบด้วย Google</button><button id="login-github" class="btn" style="width:100%;margin:6px 0;background:#111827;color:#fff">เข้าสู่ระบบด้วย GitHub</button></div>';
+    gate.innerHTML = '<div style="background:#fff;border-radius:16px;padding:28px;max-width:360px;width:calc(100% - 32px);text-align:center;box-shadow:0 20px 60px #0004"><h2>เข้าสู่ระบบร้านค้า</h2><p>ใช้บัญชี Google ที่ได้รับอนุญาต</p><button id="login-google" class="btn btn-primary" style="width:100%;margin:6px 0">เข้าสู่ระบบด้วย Google</button></div>';
     document.body.appendChild(gate);
     const redirectTo = window.location.origin + window.location.pathname;
     document.getElementById('login-google').onclick = () => client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
-    document.getElementById('login-github').onclick = () => client.auth.signInWithOAuth({ provider: 'github', options: { redirectTo } });
     client.auth.onAuthStateChange((_event, nextSession) => {
-      if (nextSession) gate.remove();
+      if (nextSession) {
+        gate.remove();
+        window.location.reload();
+      }
     });
   }
-  // Access is intentionally link-based for this internal deployment.
-  // Do not block the application behind a provider login gate.
+  window.addEventListener('DOMContentLoaded', addLogin, { once: true });
 })();
 </script>
 

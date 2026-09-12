@@ -25,18 +25,11 @@
     'คอลัมน์ 1': row.legacy_transaction_id || row.id
   });
 
-  let userPromise = null;
   async function currentUser() {
     const { data: sessionData, error: sessionError } = await client.auth.getSession();
     if (sessionError) throw sessionError;
     if (sessionData.session?.user) return sessionData.session.user;
-    if (!userPromise) {
-      userPromise = client.auth.signInAnonymously().then(({ data, error }) => {
-        if (error || !data.user) throw (error || new Error('ไม่สามารถสร้างเซสชันสำหรับเข้าใช้งานได้'));
-        return data.user;
-      }).finally(() => { userPromise = null; });
-    }
-    return userPromise;
+    throw new Error('กรุณาเข้าสู่ระบบด้วย Google ก่อนใช้งาน');
   }
 
   async function appData() {
