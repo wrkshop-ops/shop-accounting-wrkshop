@@ -158,14 +158,22 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
       .select('id,email,display_name,status,created_at,reviewed_at')
       .eq('workspace_id', workspaceId).order('created_at', { ascending: false });
     if (requestsResult.error) throw requestsResult.error;
+    const isWorkspaceAdmin = membersResult.data?.some(m => m.user_id === user.id && m.role === 'admin' && m.status === 'active') === true;
+    const auditResult = isWorkspaceAdmin
+      ? await client.from('transaction_audit_log')
+        .select('id,transaction_id,action,actor_id,actor_email,occurred_at,changed_fields')
+        .eq('workspace_id', workspaceId)
+        .order('occurred_at', { ascending: false })
+        .limit(100)
+      : { data: [], error: null };
+    if (auditResult.error) throw auditResult.error;
     const records = tx.map(txToLegacy);
     const supplierRows = suppliers.map(r => ({ __rowId: r.id, SupplierID: r.supplier_id || r.id, SupplierName: r.supplier_name }));
     const productRows = products.map(r => ({ __rowId: r.id, ProductID: r.product_id || r.id, ProductName: r.product_name, Category: r.category || '' }));
     const uniq = (values) => [...new Set(values.filter(Boolean))].sort();
     return {
       status: 'success', message: 'โหลดข้อมูลสำเร็จ', workspaceId,
-      isWorkspaceAdmin: membersResult.data?.some(m => m.user_id === user.id && m.role === 'admin' && m.status === 'active') === true,
-      members: membersResult.data || [], accessRequests: requestsResult.data || [], records, suppliers: supplierRows, products: productRows,
+      isWorkspaceAdmin, members: membersResult.data || [], accessRequests: requestsResult.data || [], auditLog: auditResult.data || [], records, suppliers: supplierRows, products: productRows,
       dropdownData: {
         types: uniq(['รายรับ', 'รายจ่าย', ...records.map(r => r['ประเภท'])]),
         shopNames: uniq([...supplierRows.map(r => r.SupplierName), ...records.map(r => r['ชื่อร้าน'])]),
@@ -1624,6 +1632,13 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
                         <h3 class="text-lg font-bold text-slate-800 mb-3">คำขอเข้าใช้งาน</h3>
                         <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-amber-50 text-slate-600 text-xs"><tr><th class="p-4 text-left">อีเมล</th><th class="p-4 text-left">ชื่อ</th><th class="p-4 text-left">สถานะ</th><th class="p-4 text-left">วันที่ขอ</th><th class="p-4 text-center">จัดการ</th></tr></thead><tbody id="workspaceRequestsTableBody"></tbody></table></div>
                     </div>
+                    <div id="workspaceAuditSection" class="hidden mt-8">
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <div><h3 class="text-lg font-bold text-slate-800">ประวัติการแก้ไขรายการ</h3><p class="text-xs text-slate-500 mt-1">แสดงการเพิ่ม แก้ไข และลบรายการล่าสุดสูงสุด 100 รายการ</p></div>
+                        </div>
+                        <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-100 text-slate-600 text-xs"><tr><th class="p-4 text-left">เวลา</th><th class="p-4 text-left">ผู้ดำเนินการ</th><th class="p-4 text-left">การทำรายการ</th><th class="p-4 text-left">รายละเอียด</th><th class="p-4 text-left">รหัสรายการ</th></tr></thead><tbody id="workspaceAuditTableBody"></tbody></table></div>
+                        <div id="workspaceAuditPlaceholder" class="text-center p-8 text-slate-500 hidden">ยังไม่มีประวัติการเปลี่ยนแปลง</div>
+                    </div>
                 </div>
             </div>
 
@@ -2058,6 +2073,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
         let workspaceMembers = [];
         let isWorkspaceAdmin = false;
         let workspaceAccessRequests = [];
+        let transactionAuditLog = [];
 
         let dropdownOptions = { // Data for dropdowns/datalists
 
@@ -2866,6 +2882,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
                     workspaceMembers = data.members || [];
                     isWorkspaceAdmin = data.isWorkspaceAdmin === true;
                     workspaceAccessRequests = data.accessRequests || [];
+                    transactionAuditLog = data.auditLog || [];
 
                     dropdownOptions = data.dropdownData;
 
@@ -5112,6 +5129,23 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
                     google.script.run.withSuccessHandler(response => { const data = JSON.parse(response); if (data.status === 'error') return handleFailure(new Error(data.message)); workspaceMembers = data.members || []; workspaceAccessRequests = data.accessRequests || []; renderWorkspaceMembers(); showToast('สำเร็จ', data.message, 'success'); }).withFailureHandler(handleFailure).reviewWorkspaceAccessRequest(JSON.stringify({ request_id: button.dataset.requestId, status }));
                 }, status === 'approved' ? 'fa-user-check' : 'fa-user-xmark');
             }));
+
+            const auditSection = document.getElementById('workspaceAuditSection');
+            const auditBody = document.getElementById('workspaceAuditTableBody');
+            const auditPlaceholder = document.getElementById('workspaceAuditPlaceholder');
+            if (!auditSection || !auditBody || !auditPlaceholder) return;
+            auditSection.classList.toggle('hidden', !isWorkspaceAdmin);
+            auditBody.innerHTML = transactionAuditLog.map(entry => {
+                const fields = entry.changed_fields || {};
+                const labels = { transaction_date: 'วันที่', store_name: 'ร้านค้า', category: 'หมวดหมู่', item_name: 'รายการ', amount: 'จำนวนเงิน', total: 'ยอดรวม', status: 'สถานะ', payment_date: 'วันที่จ่าย', note: 'หมายเหตุ', balance: 'คงเหลือ', transaction_type: 'ประเภท' };
+                const formatValue = value => value === null || value === undefined || value === '' ? '-' : String(value);
+                let detail = entry.action === 'insert' ? 'เพิ่มรายการใหม่' : (entry.action === 'delete' ? 'ลบรายการ' : Object.entries(fields).map(([key, value]) => `${labels[key] || key}: ${formatValue(value.old)} → ${formatValue(value.new)}`).join(' · '));
+                if (!detail) detail = 'เปลี่ยนแปลงข้อมูล';
+                const actionLabel = entry.action === 'insert' ? 'เพิ่ม' : (entry.action === 'delete' ? 'ลบ' : 'แก้ไข');
+                const actionClass = entry.action === 'delete' ? 'text-red-600' : (entry.action === 'insert' ? 'text-emerald-600' : 'text-blue-600');
+                return `<tr class="border-b border-slate-100 align-top"><td class="p-4 whitespace-nowrap">${escapeWorkspaceText(new Date(entry.occurred_at).toLocaleString('th-TH'))}</td><td class="p-4">${escapeWorkspaceText(entry.actor_email || entry.actor_id || 'ระบบ')}</td><td class="p-4 font-semibold ${actionClass}">${actionLabel}</td><td class="p-4 max-w-xl">${escapeWorkspaceText(detail)}</td><td class="p-4 text-xs text-slate-500">${escapeWorkspaceText(entry.transaction_id || '-')}</td></tr>`;
+            }).join('');
+            auditPlaceholder.classList.toggle('hidden', transactionAuditLog.length > 0);
         }
 
         document.getElementById('workspaceInviteBtn')?.addEventListener('click', () => {
