@@ -250,7 +250,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     const redirectTo = window.location.origin + window.location.pathname;
     document.getElementById('login-google').onclick = () => client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
     client.auth.onAuthStateChange((_event, nextSession) => {
-      if (nextSession) {
+      if (nextSession && !nextSession.user?.is_anonymous) {
         gate.remove();
         window.location.reload();
       }
