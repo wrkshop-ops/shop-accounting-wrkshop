@@ -8,6 +8,7 @@
 
   const fail = (message) => ({ status: 'error', message });
   const toDate = (value) => value ? String(value).slice(0, 10) : '';
+  const normalizeId = (value) => typeof value === 'string' ? value.trim() : '';
   const txToLegacy = (row) => ({
     transaction_id: row.id,
     'ประเภท': row.transaction_type,
@@ -52,9 +53,9 @@
       }
     }
     const [tx, suppliers, products] = await Promise.all([
-      fetchAll(() => client.from('transactions').select('*').order('transaction_date', { ascending: false })),
-      fetchAll(() => client.from('suppliers').select('*').order('supplier_name')),
-      fetchAll(() => client.from('products').select('*').order('product_name'))
+      fetchAll(() => client.from('transactions').select('id,transaction_type,transaction_date,store_name,category,item_name,amount,total,status,payment_date,note,balance,legacy_transaction_id').order('transaction_date', { ascending: false })),
+      fetchAll(() => client.from('suppliers').select('id,supplier_id,supplier_name').order('supplier_name')),
+      fetchAll(() => client.from('products').select('id,product_id,product_name,category').order('product_name'))
     ]);
     const records = tx.map(txToLegacy);
     const supplierRows = suppliers.map(r => ({ __rowId: r.id, SupplierID: r.supplier_id || r.id, SupplierName: r.supplier_name }));
@@ -78,27 +79,31 @@
     if (name === 'saveTransaction' || name === 'updateTransaction') {
       const payload = name === 'updateTransaction' ? JSON.parse(args[1]) : JSON.parse(args[0]);
       const row = {
-        user_id: user.id, transaction_type: payload.type, transaction_date: payload.date,
+        transaction_type: payload.type, transaction_date: payload.date,
         store_name: payload.shopName, category: payload.category, item_name: payload.item,
         amount: Number(payload.amount) || 0, total: Number(payload.amount) || 0,
         status: payload.status, payment_date: payload.paymentDate || null, note: payload.notes || null
       };
-      const transactionId = name === 'updateTransaction' ? JSON.parse(args[0]).transaction_id : null;
+      const transactionId = name === 'updateTransaction'
+        ? normalizeId(JSON.parse(args[0]).transaction_id || JSON.parse(args[0]).id)
+        : null;
       if (name === 'updateTransaction' && !transactionId) throw new Error('ไม่พบรหัสรายการสำหรับแก้ไข');
       const result = name === 'updateTransaction'
-        ? await client.from('transactions').update(row).eq('id', transactionId).eq('user_id', user.id).select('id')
-        : await client.from('transactions').insert(row).select('id');
+        // RLS is the authorization boundary. Duplicating user_id here made
+        // stale/changed sessions look like missing rows and obscured the cause.
+        ? await client.from('transactions').update(row).eq('id', transactionId).select('id')
+        : await client.from('transactions').insert({ ...row, user_id: user.id }).select('id');
       if (result.error) throw result.error;
-      if (name === 'updateTransaction' && (!result.data || result.data.length !== 1)) throw new Error('ไม่พบรายการที่ต้องการแก้ไข หรือรายการถูกแก้ไขไปแล้ว');
+      if (name === 'updateTransaction' && (!result.data || result.data.length !== 1)) throw new Error('ไม่พบรายการที่ต้องการแก้ไขในเซสชันนี้ รายการอาจถูกลบหรือเปิดจากเซสชัน/เครื่องอื่น');
       return appData();
     }
     if (name === 'deleteTransaction') {
       const payload = JSON.parse(args[0]);
-      const transactionId = payload.transaction_id || payload.id;
+      const transactionId = normalizeId(payload.transaction_id || payload.id);
       if (!transactionId) throw new Error('ไม่พบรหัสรายการสำหรับลบ');
-      const result = await client.from('transactions').delete().eq('id', transactionId).eq('user_id', user.id).select('id');
+      const result = await client.from('transactions').delete().eq('id', transactionId).select('id');
       if (result.error) throw result.error;
-      if (!result.data || result.data.length !== 1) throw new Error('ไม่พบรายการที่ต้องการลบ หรือรายการถูกลบไปแล้ว');
+      if (!result.data || result.data.length !== 1) throw new Error('ไม่พบรายการที่ต้องการลบในเซสชันนี้ รายการอาจถูกลบหรือเปิดจากเซสชัน/เครื่องอื่น');
       return appData();
     }
     if (name === 'saveSupplier') {
@@ -106,7 +111,7 @@
       if (!p.SupplierID || !p.SupplierName) throw new Error('ข้อมูลผู้ขายไม่ครบถ้วน');
       let result;
       if (p.row_id) {
-        result = await client.from('suppliers').update({ supplier_id: p.SupplierID, supplier_name: p.SupplierName }).eq('id', p.row_id).eq('user_id', user.id).select('id');
+        result = await client.from('suppliers').update({ supplier_id: p.SupplierID, supplier_name: p.SupplierName }).eq('id', normalizeId(p.row_id)).select('id');
       } else {
         const existing = await client.from('suppliers').select('id').eq('user_id', user.id).eq('supplier_id', p.SupplierID).limit(1);
         if (existing.error) throw existing.error;
@@ -120,7 +125,7 @@
     if (name === 'deleteSupplier') {
       const p = typeof args[0] === 'string' ? { row_id: null, SupplierID: args[0] } : JSON.parse(args[0]);
       if (!p.row_id) throw new Error('การลบผู้ขายต้องอ้างอิงรายการที่เลือกโดยตรง เพื่อป้องกันลบหลายรายการ');
-      const result = await client.from('suppliers').delete().eq('id', p.row_id).eq('user_id', user.id).select('id');
+      const result = await client.from('suppliers').delete().eq('id', normalizeId(p.row_id)).select('id');
       if (result.error) throw result.error;
       if (!result.data || result.data.length !== 1) throw new Error('ไม่พบผู้ขายที่ต้องการลบ หรือผู้ขายถูกลบไปแล้ว');
       return appData();
@@ -130,7 +135,7 @@
       if (!p.ProductID || !p.ProductName || !p.Category) throw new Error('ข้อมูลสินค้าไม่ครบถ้วน');
       let result;
       if (p.row_id) {
-        result = await client.from('products').update({ product_id: p.ProductID, product_name: p.ProductName, category: p.Category }).eq('id', p.row_id).eq('user_id', user.id).select('id');
+        result = await client.from('products').update({ product_id: p.ProductID, product_name: p.ProductName, category: p.Category }).eq('id', normalizeId(p.row_id)).select('id');
       } else {
         const existing = await client.from('products').select('id').eq('user_id', user.id).eq('product_id', p.ProductID).limit(1);
         if (existing.error) throw existing.error;
@@ -144,7 +149,7 @@
     if (name === 'deleteProduct') {
       const p = typeof args[0] === 'string' ? { row_id: null, ProductID: args[0] } : JSON.parse(args[0]);
       if (!p.row_id) throw new Error('การลบสินค้าต้องอ้างอิงรายการที่เลือกโดยตรง เพื่อป้องกันลบหลายรายการ');
-      const result = await client.from('products').delete().eq('id', p.row_id).eq('user_id', user.id).select('id');
+      const result = await client.from('products').delete().eq('id', normalizeId(p.row_id)).select('id');
       if (result.error) throw result.error;
       if (!result.data || result.data.length !== 1) throw new Error('ไม่พบสินค้าที่ต้องการลบ หรือสินค้าถูกลบไปแล้ว');
       return appData();
